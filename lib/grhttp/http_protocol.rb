@@ -22,7 +22,7 @@ module GRHttp
 			data = StringIO.new data
 			io[:step] ||= 0
 			until data.eof?
-				request = io[:request] || HTTPRequest.new(io)
+				request = io[:request] ||= HTTPRequest.new(io)
 				parse_quary data, request, io
 				parse_head data, request, io
 				parse_body data, request, io
@@ -102,7 +102,6 @@ module GRHttp
 				return unless header
 				if header.match EOHEADERS
 					if request['transfer-coding'] || (request['content-length'] && request['content-length'].to_i != 0) || request['content-type']
-						request[:body] = ''
 						io[:step] = 2
 						return
 					else
@@ -122,10 +121,11 @@ module GRHttp
 		CHUNK_REGX = /\A[a-z0-9A-Z]+/
 		EOCHUNK_REGX = /^0[\r]?\n/
 		def self.parse_body data, request, io
-			while io[:step] == 2
-
-				# check for body is needed, if exists and if complete
-				if request['transfer-coding'] == 'chunked'
+			return unless io[:step] == 2
+			request[:body] ||= ''
+			# check for body is needed, if exists and if complete
+			if request['transfer-coding'] == 'chunked'
+				until data.eof?
 					# ad mid chunk logic here
 					if io[:length].to_i == 0
 						chunk = data.gets
@@ -135,30 +135,31 @@ module GRHttp
 						return (io[:step] =0), raise("HTTP protocol error: unable to parse chunked enocoded message.") if io[:length] == 0					
 						io[:act_length] = 0
 					end
+					return if data.eof?
 					chunk = data.read(io[:length] - io[:act_length])
-					return if chunk.empty?
 					request[:body] << chunk
 					io[:act_length] += chunk.bytesize
 					(io[:act_length] = io[:length] = 0) && (data.gets) if io[:act_length] >= io[:length]
-				elsif request['content-length']
-					unless io[:length]
-						request['content-length'] = io[:length] = request['content-length'].to_i
-						io[:act_length] = 0
-					end
-					request[:body] << data.read(io[:length] - io[:act_length])
-					io[:act_length] = request[:body].bytesize
-					return complete_request request, io if io[:act_length] >= io[:length]
-					return if data.eof?
-				else 
-					GReactor.warn 'bad body request - trying to read'
-					loop do
-						line = data.gets
-						break if line.nil? || line.match(EOHEADERS)
-						request[:body] << line
-					end
-					return complete_request request, io
 				end
-			end 
+			elsif request['content-length']
+				unless io[:length]
+					request['content-length'] = io[:length] = request['content-length'].to_i
+					io[:act_length] = 0
+				end
+				return if data.eof?
+				request[:body] << data.read(io[:length] - io[:act_length])
+				io[:act_length] = request[:body].bytesize
+				return complete_request request, io if io[:act_length] >= io[:length]
+				return if data.eof?
+			else 
+				GReactor.warn "bad body request - trying to read: #{data.string}\r\n for request: #{request}"
+				loop do
+					line = data.gets
+					break if line.nil? || line.match(EOHEADERS)
+					request[:body] << line
+				end
+				return complete_request request, io
+			end
 		end
 
 		QUARY_REGEX = /(([a-z0-9A-Z]+):\/\/)?(([^\/\:]+))?(:([0-9]+))?([^\?\#]*)(\?([^\#]*))?/
@@ -169,18 +170,23 @@ module GRHttp
 			io[:length] = nil
 			io[:request] = nil
 
-			m = request[:query].match QUARY_REGEX
-			request[:requested_protocol] = m[1] || request['x-forwarded-proto'] || ( io.ssl? ? 'https' : 'http')
-			request[:host_name] = m[4] || (request['host'] ? request['host'].match(/^[^:]*/).to_s : nil)
-			request[:port] = m[6] || (request['host'] ? request['host'].match(/:([0-9]*)/).to_a[1] : nil)
-			request[:original_path] = HTTP.decode(m[7], :uri) || '/'
-			request['host'] ||= "#{request[:host_name]}:#{request[:port]}"
-
-			# parse query for params - m[9] is the data part of the query
 			request[:params] ||= {}
-			if m[9]
-				HTTP.extract_data m[9].split(PARAM_SPLIT_REGX), request[:params]
+
+			m = request[:query] ? request[:query].match(QUARY_REGEX) : nil
+			if m
+				request[:requested_protocol] = m[1] || request['x-forwarded-proto'] || ( io.ssl? ? 'https' : 'http')
+				request[:host_name] = m[4] || (request['host'] ? request['host'].match(/^[^:]*/).to_s : nil)
+				request[:port] = m[6] || (request['host'] ? request['host'].match(/:([0-9]*)/).to_a[1] : nil)
+				request[:original_path] = HTTP.decode(m[7], :uri) || '/'
+				request['host'] ||= "#{request[:host_name]}:#{request[:port]}"
+
+				# parse query for params - m[9] is the data part of the query
+				if m[9]
+					HTTP.extract_data m[9].split(PARAM_SPLIT_REGX), request[:params]
+				end
+
 			end
+
 
 			HTTP.make_utf8! request[:original_path]
 			request[:path] = request[:original_path].dup
