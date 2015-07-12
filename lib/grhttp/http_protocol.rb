@@ -129,33 +129,35 @@ module GRHttp
 				if request['transfer-coding'] == 'chunked'
 					# ad mid chunk logic here
 					if io[:length].to_i == 0
-						line_len = data.index EOL_REGX
-						return store_to_cache data unless line_len
-						line_len += 1 if data[line_len] == EOL_R
-						chunk = data.slice! 0..line_len
+						chunk = data.gets
+						return unless chunk
+						return complete_request request, io if chunk.match(EOCHUNK_REGX)
 						io[:length] = chunk.match(CHUNK_REGX).to_i(16)
-						return complete_request if chunk.match(EOCHUNK_REGX)
 						return (io[:step] =0), raise("HTTP protocol error: unable to parse chunked enocoded message.") if io[:length] == 0					
 						io[:act_length] = 0
 					end
-					chunk = data.slice!(0...(io[:length] - io[:act_length]))
+					chunk = data.read(io[:length] - io[:act_length])
 					return if chunk.empty?
 					request[:body] << chunk
 					io[:act_length] += chunk.bytesize
-					(io[:act_length] = io[:length] = 0) && (data.slice! /\A[\r\n]+/) if io[:act_length] >= io[:length]
+					(io[:act_length] = io[:length] = 0) && (data.gets) if io[:act_length] >= io[:length]
 				elsif request['content-length']
 					unless io[:length]
 						request['content-length'] = io[:length] = request['content-length'].to_i
 						io[:act_length] = 0
 					end
-					request[:body] << data.slice!(0...(io[:length] - io[:act_length]))
+					request[:body] << data.read(io[:length] - io[:act_length])
 					io[:act_length] = request[:body].bytesize
-					return complete_request if io[:act_length] >= io[:length]
-					return if data.empty?
+					return complete_request request, io if io[:act_length] >= io[:length]
+					return if data.eof?
 				else 
 					GReactor.warn 'bad body request - trying to read'
-					request[:body] << data.slice!(/\A[^\r\n]*[\r]?\n[\r\n]+/)
-					return complete_request
+					loop do
+						line = data.gets
+						break if line.match EOHEADERS
+						request[:body] << line
+					end
+					return complete_request request, io
 				end
 			end 
 		end
@@ -190,7 +192,7 @@ module GRHttp
 
 			request[:client_ip] = request['x-forwarded-for'].to_s.split(/,[\s]?/)[0] || (io.io.remote_address.ip_address) rescue 'unknown IP'
 
-			read_body if request[:body]
+			read_body request if request[:body]
 
 			#check for server-responses
 			case request[:method]
@@ -205,13 +207,13 @@ module GRHttp
 				return true
 			end
 
-			# return ws_upgrade if request.upgrade?
+			return ws_upgrade if request.upgrade?
 
-			# on_request request
+			on_request request
 
-			GR.queue [self, request], CALL_REQUEST
+			# GR.queue [self, request], CALL_REQUEST
 		end
-		CALL_REQUEST = Proc.new {|p, r| p.on_request r}
+		# CALL_REQUEST = Proc.new {|p, r| p.on_request r}
 		# review a Websocket Upgrade
 		def self.ws_upgrade request, io
 			new_handler = on_upgrade request
