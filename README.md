@@ -1,15 +1,17 @@
-# GrHttp
+# GRHttp - A native Ruby generic HTTP and WebSocket server.
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/gr_http`. To experiment with that code, run `bin/console` for an interactive prompt.
+NOT YET...
 
-TODO: Delete this and the text above, and describe your gem
+This is a native Ruby HTTP and WebSocket multi-threaded server that uses the [GReactor](https://github.com/boazsegev/GReactor) library.
+
+This means it's all ruby, no C or Java code.
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'gr_http'
+gem 'grhttp'
 ```
 
 And then execute:
@@ -18,7 +20,7 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install gr_http
+    $ gem install grhttp
 
 ## Usage
 
@@ -32,7 +34,7 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/gr_http.
+Bug reports and pull requests are welcome on GitHub at https://github.com/boazsegev/grhttp.
 
 
 ## License

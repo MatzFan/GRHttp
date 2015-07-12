@@ -1,17 +1,17 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'gr_http/version'
+require 'grhttp/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "gr_http"
+  spec.name          = "grhttp"
   spec.version       = GRHttp::VERSION
   spec.authors       = ["Boaz Segev"]
   spec.email         = ["boaz@2be.co.il"]
 
-  spec.summary       = %q{A generic HTTP and WebSocket server based on the GReactor gem - all code is native Ruby.}
-  spec.description   = %q{TODO: Write a longer description or delete this line.}
-  spec.homepage      = "TODO: Put your gem's website or public repo URL here."
+  spec.summary       = %q{A native Ruby generic HTTP and WebSocket server.}
+  spec.description   = %q{A native Ruby generic HTTP and WebSocket server.}
+  spec.homepage      = "https://github.com/boazsegev/HTTP-WS-GR/"
   spec.license       = "MIT"
 
   # Prevent pushing this gem to RubyGems.org by setting 'allowed_push_host', or
@@ -29,4 +29,5 @@ Gem::Specification.new do |spec|
 
   spec.add_development_dependency "bundler", "~> 1.10"
   spec.add_development_dependency "rake", "~> 10.0"
+  spec.add_dependency "greactor", "~> 0.0.2"
 end
