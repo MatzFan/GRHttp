@@ -1,19 +1,15 @@
 module GRHttp
 
-	# this class handles HTTP response objects.
+	# this class handles HTTP response.
 	#
-	# learning from rack, the basic response objects imitates the [0, {}, []] structure... with some updates.
-	#
-	# the Response's body should respond to each (and optionally to close).
-	#
-	# The response can be sent asynchronously, but headers and status cannot be changed once the response started sending data.
+	# The response can be sent in stages but should complete within the scope of the connecton's message. Please notice that headers and status cannot be changed once the response started sending data.
 	class HTTPResponse
 
 		#the response's status code
 		attr_accessor :status
 		#the response's headers
 		attr_reader :headers
-		#the flash cookie-jar (single-use cookies, that survive only one request)
+		#the flash cookie-jar (single-use cookies, that survive only one request).
 		attr_reader :flash
 		#the response's body container (defaults to an array, but can be replaces by any obect that supports `each` - `close` is NOT supported - call `close` as a callback block after `send` if you need to close the object).
 		attr_accessor :body
@@ -25,8 +21,6 @@ module GRHttp
 		attr_accessor :request
 		#the http version header
 		attr_accessor :http_version
-		#Danger Zone! direct access to cookie headers - don't use this unless you know what you're doing!
-		attr_reader :cookies
 
 		# the response object responds to a specific request on a specific io.
 		# hence, to initialize a response object, a request must be set.
@@ -34,6 +28,7 @@ module GRHttp
 		# use, at the very least `HTTPResponse.new request`
 		def initialize request, status = 200, headers = {}, body = []
 			@request, @status, @headers, @body, @io = request, status, headers, body, request[:io]
+			@request.cookies.set_response self
 			@http_version = 'HTTP/1.1' # request.version
 			@bytes_sent = 0
 			@finished = @streaming = false
@@ -41,10 +36,10 @@ module GRHttp
 			@chunked = false
 			# propegate flash object
 			@flash = Hash.new do |hs,k|
-				hs["plezi_flash_#{k.to_s}".to_sym] if hs.has_key? "plezi_flash_#{k.to_s}".to_sym
+				hs["magic_flash_#{k.to_s}".to_sym] if hs.has_key? "magic_flash_#{k.to_s}".to_sym
 			end
 			request.cookies.each do |k,v|
-				@flash[k] = v if k.to_s.start_with? 'plezi_flash_'
+				@flash[k] = v if k.to_s.start_with? 'magic_flash_'
 			end
 		end
 
@@ -58,20 +53,13 @@ module GRHttp
 			@finished
 		end
 
-		# returns true if the response is set to http streaming (you will need to close the response manually by calling #finish).
-		def streaming?
-			@streaming
-		end
-
-		# sets the http streaming flag, so that the response could be handled asynchronously.
+		# Returns a writable combined hash of the request's cookies and the response cookie values.
 		#
-		# if this flag is not set, the response will try to automatically finish its job
-		# (send its data and close the connection) once the controllers method has finished.
+		# Any cookies writen to this hash (`response.cookies[:name] = value` will be set using default values).
 		#
-		# If HTTP streaming is set, you will need to manually call `response.finish`
-		# of the connection will not close properly.
-		def start_http_streaming
-			@streaming = @chunked = true
+		# It's also possible to use this combined hash to delete cookies, using: response.cookies[:name] = nil
+		def cookies
+			@request.cookies
 		end
 
 		# pushes data to the body of the response. this is the preferred way to add data to the response.
@@ -96,18 +84,19 @@ module GRHttp
 		#
 		# see HTTP response headers for valid headers and values: http://en.wikipedia.org/wiki/List_of_HTTP_header_fields
 		def []= header, value
+			raise 'Cannot set headers after the headers had been sent.' if headers_sent?
 			header.is_a?(String) ? header.downcase! : (header.is_a?(Symbol) ? (header = header.to_s.downcase.to_sym) : (return false))
 			headers[header]	= value
 		end
 
-		# sets/deletes cookies when headers are sent.
+		# Sets/deletes cookies when headers are sent.
 		#
-		# accepts:
+		# Accepts:
 		# name:: the cookie's name
 		# value:: the cookie's value
 		# parameters:: a parameters Hash for cookie creation.
 		#
-		# parameters accept any of the following Hash keys and values:
+		# Parameters accept any of the following Hash keys and values:
 		#
 		# expires:: a Time object with the expiration date. defaults to 10 years in the future.
 		# max_age:: a Max-Age HTTP cookie string.
@@ -116,7 +105,10 @@ module GRHttp
 		# secure:: if set to `true`, the cookie will only be available over secure connections. defaults to false.
 		# http_only:: if true, the HttpOnly flag will be set (not accessible to javascript). defaults to false.
 		#
+		# Setting the request's coockies (`request.cookies[:name] = value`) will automatically call this method with default parameters.
+		#
 		def set_cookie name, value, params = {}
+			raise 'Cannot set cookies after the headers had been sent.' if headers_sent?
 			params[:expires] = (Time.now - 315360000) unless value
 			value ||= 'deleted'
 			params[:expires] ||= (Time.now + 315360000) unless params[:max_age]
@@ -152,7 +144,7 @@ module GRHttp
 		#
 		# the response will remain open for more data to be sent through (using `response << data` and `response.send`).
 		def send(str = nil)
-			raise 'HTTPResponse SERVICE MISSING: cannot send http response without an io.' unless @io
+			raise 'HTTPResponse IO MISSING: cannot send http response without an io.' unless @io
 			body << str if str && body.is_a?(Array)
 			send_headers
 			return if request.head?
@@ -185,36 +177,37 @@ module GRHttp
 				false
 			end
 		else
-			# sends the response and flags the response as complete. future data should not be sent. the flag will only be enforced be the Plezi router. your code might attempt sending data (which would probbaly be ignored by the client or raise an exception).
+			# Sends the response and flags the response as complete. Future data should not be sent. Your code might attempt sending data (which would probbaly be ignored by the client or raise an exception).
 			def finish
+				raise "Response already sent" if @finished
 				@headers['content-length'] ||= body[0].bytesize if !headers_sent? && body.is_a?(Array) && body.length == 1
 				self.send
 				io.send( (@chunked) ? "0\r\n\r\n" : nil)
 				@finished = true
 				# io.disconnect unless headers['keep-alive']
 				# log
-				Plezi.log_raw "#{request[:client_ip]} [#{Time.now.utc}] \"#{request[:method]} #{request[:original_path]} #{request[:requested_protocol]}\/#{request[:version]}\" #{status} #{bytes_sent.to_s} #{"%0.3f" % ((Time.now - request[:time_recieved])*1000)}ms\n"
+				GReactor.log_raw "#{request[:client_ip]} [#{Time.now.utc}] \"#{request[:method]} #{request[:original_path]} #{request[:requested_protocol]}\/#{request[:version]}\" #{status} #{bytes_sent.to_s} #{"%0.3f" % ((Time.now - request[:time_recieved])*1000)}ms\n"
 			end
 			
 		end
 
 		# Danger Zone (internally used method, use with care): attempts to finish the response - if it was not flaged as streaming or completed.
 		def try_finish
-			finish unless @finished || @streaming
+			finish unless @finished
 		end
 
 		# Danger Zone (internally used method, use with care): fix response's headers before sending them (date, connection and transfer-coding).
 		def fix_cookie_headers
 			# remove old flash cookies
 			request.cookies.keys.each do |k|
-				if k.to_s.start_with? 'plezi_flash_'
+				if k.to_s.start_with? 'magic_flash_'
 					set_cookie k, nil
 					flash.delete k
 				end
 			end
 			#set new flash cookies
 			@flash.each do |k,v|
-				set_cookie "plezi_flash_#{k.to_s}", v
+				set_cookie "magic_flash_#{k.to_s}", v
 			end
 		end
 		# Danger Zone (internally used method, use with care): fix response's headers before sending them (date, connection and transfer-coding).
@@ -303,7 +296,11 @@ module GRHttp
 			510=>"Not Extended",
 			511=>"Network Authentication Required"
 		}
+
+		protected
+
 	end
+
 end
 
 ######

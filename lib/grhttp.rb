@@ -5,6 +5,7 @@ require 'greactor'
 require "grhttp/http_protocol"
 require "grhttp/http_request"
 require "grhttp/http_response"
+require "grhttp/http_cookies"
 
 
 

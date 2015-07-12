@@ -15,8 +15,8 @@ module GRHttp
 		# This method parses the HTTP request and calls the on_request (or on_upgrade) event.
 		def on_message data
 			@step ||= 0
+			restore_from_cache data if io[:data]
 			until data.empty?
-				restore_from_cache data if io[:data]
 				parse_quary data
 				parse_head data
 				parse_body data
@@ -63,15 +63,16 @@ module GRHttp
 		protected
 
 		HTTP_METHODS = %w{GET HEAD POST PUT DELETE TRACE OPTIONS CONNECT PATCH}
-		HTTP_METHODS_REGEXP = /^#{HTTP_METHODS.join('|')}/
+		HTTP_METHODS_REGEXP = /\A#{HTTP_METHODS.join('|')}/
 
 		def parse_quary data
 			while @step == 0
-				quary = data.slice! /[^\r\n]*[\r]?\n/
+				quary = data.slice! /\A[^\r\n]*[\r]?\n/
 				return store_to_cache data unless quary
 				next unless quary.match(HTTP_METHODS_REGEXP)
 				@request = HTTPRequest.new
 				@request[:io] = @io
+				@request[:time_recieved] = Time.now
 				@request[:method], @request[:query], @request[:version] = quary.split(/[\s]+/)
 				@request[:version] = (@request[:version] || '1.1').match(/[0-9\.]+/).to_s.to_f
 				@step = 1
@@ -80,7 +81,7 @@ module GRHttp
 
 		def parse_head data
 			while @step == 1
-				header = data.slice! /^[^\r\n]*[\r]?\n/
+				header = data.slice! /\A[^\r\n]*[\r]?\n/
 				return store_to_cache data unless header
 				if header.match /^[\r]?\n$/
 					# check if body is expected.
@@ -96,8 +97,7 @@ module GRHttp
 				m = header.match(/^([^:]*):[\s]*([^\r\n]*)/)
 				case m[1].downcase
 				when 'cookie'
-					@request[:cookies] ||= {}
-					HTTP.extract_data m[2].split(/[;,][\s]?/), @request[:cookies], :uri
+					HTTP.extract_data m[2].split(/[;,][\s]?/), @request.cookies, :uri
 				else
 					name = HTTP.make_utf8!(m[1]).downcase
 					@request[ name ] ? (@request[ name ] << ", #{HTTP.make_utf8! m[2]}"): (@request[ name ] =  HTTP.make_utf8! m[2])
@@ -106,13 +106,15 @@ module GRHttp
 		end
 		def parse_body data
 			while @step == 2
+
 				# check for body is needed, if exists and if complete
 				if @request['transfer-coding'] == 'chunked'
 					# ad mid chunk logic here
 					if io[:length].to_i == 0
-						chunk = data.slice! /[^\r\n]*[\r]?\n/
+						data.slice! /\A[\r\n]+/
+						chunk = data.slice! /\A[^\r\n]*[\r]?\n/
 						return store_to_cache data unless chunk
-						io[:length] = chunk.match(/^[a-z0-9A-Z]+/).to_i(16)
+						io[:length] = chunk.match(/\A[a-z0-9A-Z]+/).to_i(16)
 						return complete_request if chunk.match(/^0[\r]?\n/)
 						return (@step =0), raise("HTTP protocol error: unable to parse chunked enocoded message.") if io[:length] == 0					
 						io[:act_length] = 0
@@ -121,19 +123,19 @@ module GRHttp
 					return if chunk.empty?
 					@request[:body] << chunk
 					io[:act_length] += chunk.bytesize
-					(io[:act_length] = io[:length] = 0) && (data.slice! /^[\r\n]+/) if io[:act_length] >= io[:length]
+					(io[:act_length] = io[:length] = 0) && (data.slice! /\A[\r\n]+/) if io[:act_length] >= io[:length]
 				elsif @request['content-length']
 					unless io[:length]
 						@request['content-length'] = io[:length] = @request['content-length'].to_i
 						io[:act_length] = 0
 					end
-					data << data.slice!(0...(io[:length] - io[:act_length]))
+					@request[:body] << data.slice!(0...(io[:length] - io[:act_length]))
 					io[:act_length] = @request[:body].bytesize
 					return complete_request if io[:act_length] >= io[:length]
 					return if data.empty?
 				else 
 					GReactor.warn 'bad body request - trying to read'
-					@request[:body] << data.slice!(/^[^\r\n]*[\r]?\n[\r\n]+/)
+					@request[:body] << data.slice!(/\A[^\r\n]*[\r]?\n[\r\n]+/)
 					return complete_request
 				end
 			end 
@@ -144,7 +146,7 @@ module GRHttp
 			io[:length] = nil
 
 			m = @request[:query].match /(([a-z0-9A-Z]+):\/\/)?(([^\/\:]+))?(:([0-9]+))?([^\?\#]*)(\?([^\#]*))?/
-			@request[:requested_protocol] = m[1] || @request['x-forwarded-proto'] || ( ssl? ? 'https' : 'http')
+			@request[:requested_protocol] = m[1] || @request['x-forwarded-proto'] || ( @io.ssl? ? 'https' : 'http')
 			@request[:host_name] = m[4] || (@request['host'] ? @request['host'].match(/^[^:]*/).to_s : nil)
 			@request[:port] = m[6] || (@request['host'] ? @request['host'].match(/:([0-9]*)/).to_a[1] : nil)
 			@request[:original_path] = HTTP.decode(m[7], :uri) || '/'
@@ -157,7 +159,7 @@ module GRHttp
 			end
 
 			HTTP.make_utf8! @request[:original_path]
-			@request[:path] = @request[:original_path].chomp('/')
+			@request[:path] = @request[:original_path].dup
 			@request[:original_path].freeze
 
 			HTTP.make_utf8! @request[:host_name] if @request[:host_name]
@@ -168,11 +170,11 @@ module GRHttp
 			read_body if @request[:body]
 
 			#check for server-responses
-			case request.request_method
+			case @request.request_method
 			when 'TRACE'
 				return true
 			when 'OPTIONS'
-				response = HTTPResponse.new request
+				response = HTTPResponse.new @request
 				response[:Allow] = 'GET,HEAD,POST,PUT,DELETE,OPTIONS'
 				response['access-control-allow-origin'] = '*'
 				response['content-length'] = 0
@@ -180,7 +182,7 @@ module GRHttp
 				return true
 			end
 
-			return ws_upgrade if request['upgrade'] && request['upgrade'].to_s.downcase == 'websocket' &&  request['connection'].to_s.downcase == 'upgrade'
+			return ws_upgrade if @request.upgrade?
 
 			on_request @request
 		end
@@ -211,9 +213,9 @@ module GRHttp
 			# parse content
 			case @request['content-type'].to_s
 			when /x-www-form-urlencoded/
-				HTTP.extract_data @request[:body].split(/[&;]/), @request[:params], :form # :uri
+				HTTP.extract_data @request.delete(:body).split(/[&;]/), @request[:params], :form # :uri
 			when /multipart\/form-data/
-				read_multipart @request, @request[:body]
+				read_multipart @request, @request.delete(:body)
 			when /text\/xml/
 				# to-do support xml?
 				HTTP.make_utf8! @request[:body]
@@ -238,13 +240,13 @@ module GRHttp
 					unless p.strip.empty? || p=='--'
 						# read headers
 						h = {}
-						m = p.slice! /^[^\r\n]*[\r]?\n/
+						m = p.slice! /\A[^\r\n]*[\r]?\n/
 						while m
+							break if m.match /\A[\r]?\n/
 							m = m.match(/^([^:]+):[\s]?([^\r\n]+)/)
 							h[m[1].downcase] = m[2] if m
-							m = p.slice! /^[^\r\n]*[\r]?\n/
+							m = p.slice! /\A[^\r\n]*[\r]?\n/
 						end
-						p.slice! /^[\r]?\n/
 						# send headers and body to be read
 						read_multipart h, p, name_prefix
 					end
@@ -274,11 +276,11 @@ module GRHttp
 				name << "[#{HTTP.decode(cd[:name][1..-2])}]"
 			end
 			if headers['content-type']
-				HTTP.add_param_to_hash "#{name}[data]", part, @response[:params]
-				HTTP.add_param_to_hash "#{name}[type]", HTTP.make_utf8!(headers['content-type']), @response[:params]
-				cd.each {|k,v|  HTTP.add_param_to_hash "#{name}[#{k.to_s}]", HTTP.make_utf8!(v[1..-2]), @response[:params] unless k == :name}
+				HTTP.add_param_to_hash "#{name}[data]", part, @request[:params]
+				HTTP.add_param_to_hash "#{name}[type]", HTTP.make_utf8!(headers['content-type']), @request[:params]
+				cd.each {|k,v|  HTTP.add_param_to_hash "#{name}[#{k.to_s}]", HTTP.make_utf8!(v[1..-2]), @request[:params] unless k == :name}
 			else
-				HTTP.add_param_to_hash name, HTTP.decode(part, :utf8), @response[:params]
+				HTTP.add_param_to_hash name, HTTP.decode(part, :utf8), @request[:params]
 			end
 			true
 		end

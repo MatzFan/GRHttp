@@ -32,7 +32,7 @@ module GRHttp
 		end
 		# the cookies sent by the client.
 		def cookies
-			self[:cookies] ||= {}
+			self[:cookies] ||= Cookies.new
 		end
 
 		# the query string
@@ -118,6 +118,10 @@ module GRHttp
 		# returns true if the request is of type XML.
 		def xml?
 			self['content-type'].match /text\/xml/
+		end
+		# returns true if this is a websocket upgrade request
+		def upgrade?
+			self['upgrade'] && self['upgrade'].to_s.downcase == 'websocket' &&  self['connection'].to_s.downcase == 'upgrade'
 		end
 
 	end
