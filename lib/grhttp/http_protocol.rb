@@ -42,10 +42,9 @@ module GRHttp
 		# The default implementation simply sends back the parsed request's object.
 		#
 		# To send data or close the connection use the request's IO wrapper object at: request[:io].
-		def on_request request
-			response = HTTPResponse.new request
+		def on_request request, response
 			response << request.to_s
-			response.finish
+			# response.cancel!
 			# length = request.to_s.bytesize
 			# request[:io].send "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: #{length}\r\nConnection: keep-alive\r\nKeep-Alive: 5\r\n\r\n#{request.to_s}"
 			# request[:io].send "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\nConnection: keep-alive\r\nKeep-Alive: 5\r\n\r\nHello World\r\n"
@@ -93,7 +92,7 @@ module GRHttp
 			end
 		end
 
-		EOHEADERS = /[\r]?\n/
+		EOHEADERS = /^[\r]?\n/
 		HEADER_REGX = /^([^:]*):[\s]*([^\r\n]*)/
 		HEADER_SPLIT_REGX = /[;,][\s]?/
 		def self.parse_head data, request, io
@@ -154,7 +153,7 @@ module GRHttp
 					GReactor.warn 'bad body request - trying to read'
 					loop do
 						line = data.gets
-						break if line.match EOHEADERS
+						break if line.nil? || line.match(EOHEADERS)
 						request[:body] << line
 					end
 					return complete_request request, io
@@ -209,7 +208,11 @@ module GRHttp
 
 			return ws_upgrade if request.upgrade?
 
-			on_request request
+			response = HTTPResponse.new request
+
+			on_request request, response
+
+			response.try_finish
 
 			# GR.queue [self, request], CALL_REQUEST
 		end
@@ -231,7 +234,7 @@ module GRHttp
 			when /x-www-form-urlencoded/
 				HTTP.extract_data request.delete(:body).split(/[&;]/), request[:params], :form # :uri
 			when /multipart\/form-data/
-				read_multipart request, request.delete(:body)
+				read_multipart request, request, request.delete(:body)
 			when /text\/xml/
 				# to-do support xml?
 				HTTP.make_utf8! request[:body]
@@ -242,7 +245,7 @@ module GRHttp
 		end
 
 		# parse a mime/multipart body or part.
-		def self.read_multipart headers, part, name_prefix = ''
+		def self.read_multipart request, headers, part, name_prefix = ''
 			if headers['content-type'].to_s.match /multipart/
 				boundry = headers['content-type'].match(/boundary=([^\s]+)/)[1]
 				if headers['content-disposition'].to_s.match /name=/
@@ -264,7 +267,7 @@ module GRHttp
 							m = p.slice! /\A[^\r\n]*[\r]?\n/
 						end
 						# send headers and body to be read
-						read_multipart h, p, name_prefix
+						read_multipart request, h, p, name_prefix
 					end
 				end
 				return

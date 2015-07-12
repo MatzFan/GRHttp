@@ -53,6 +53,12 @@ module GRHttp
 			@finished
 		end
 
+		# Forces the `finished` response's flag to true - use this to avoide sending a response or before manualy
+		# responding using the IO object.
+		def cancel!
+			@finished = true
+		end
+
 		# Returns a writable combined hash of the request's cookies and the response cookie values.
 		#
 		# Any cookies writen to this hash (`response.cookies[:name] = value` will be set using default values).
