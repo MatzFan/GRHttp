@@ -1,4 +1,3 @@
-require 'stringio'
 module GRHttp
 
 	# This is a basic HTTP handler class for the reactor.
@@ -11,21 +10,16 @@ module GRHttp
 	#
 	# Do NOT override the `#on_message data` method, as this class uses the #on_message method to parse incoming requests.
 	#
-	module HTTP
+	class HTTP < GReactor::Protocol
 
-		module_function
-
-		# This method is called by the reactor. Don't override this method.
-		def call io
-			data = io.read
-			return unless data
-			data = StringIO.new data
-			io[:step] ||= 0
-			until data.eof?
-				request = io[:request] || HTTPRequest.new(io)
-				parse_quary data, request, io
-				parse_head data, request, io
-				parse_body data, request, io
+		# This method parses the HTTP request and calls the on_request (or on_upgrade) event.
+		def on_message data
+			@step ||= 0
+			restore_from_cache data if io[:data]
+			until data.empty?
+				parse_quary data
+				parse_head data
+				parse_body data
 			end
 		end
 
@@ -33,22 +27,20 @@ module GRHttp
 		#
 		# This method is called every time an HTTP request is accepted through the connection.
 		#
-		# The method is called from withing an io.lock, to avoide two or more requests
+		# Once you create the  method is called from withing an io.lock, to avoide two or more requests
 		# made by the same client being answered at the same time.
 		#
-		# Due to HTTP's specs, it is important the the request's response is finished within scope of the lock
+		#
+		# Due to HTTP's specs, it is important the the request's response is finished within scopr of the lock
 		# (by the time this method complete's it's execution).
 		#
 		# The default implementation simply sends back the parsed request's object.
-		#
-		# To send data or close the connection use the request's IO wrapper object at: request[:io].
 		def on_request request
-			response = HTTPResponse.new request
-			response << request.to_s
-			response.finish
-			# length = request.to_s.bytesize
-			# request[:io].send "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: #{length}\r\nConnection: keep-alive\r\nKeep-Alive: 5\r\n\r\n#{request.to_s}"
-			# request[:io].send "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\nConnection: keep-alive\r\nKeep-Alive: 5\r\n\r\nHello World\r\n"
+			length = request.to_s.bytesize
+			# response = HTTPResponse.new request
+			# response << request.to_s
+			# response.finish
+			send "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: #{length}\r\nConnection: keep-alive\r\nKeep-Alive: 5\r\n\r\n#{request.to_s}"
 		end
 
 		# Override this method to handle Websocket connections.
@@ -76,57 +68,64 @@ module GRHttp
 		HTTP_METHODS = %w{GET HEAD POST PUT DELETE TRACE OPTIONS CONNECT PATCH}
 		HTTP_METHODS_REGEXP = /\A#{HTTP_METHODS.join('|')}/i
 
+		EOL_REGX = /[\r]?\n/
+		EOL_R = "\r"
+		EOHEADERS = /[\r]?\n[\r]?\n/
 		QUARY_SPLIT_REGX = /[\s]+/
 		HTTP_VER_REGX = /[0-9\.]+/
 
-		def self.parse_quary data, request, io
-			quary = true
-			while io[:step] == 0
-				quary = data.gets
-				return unless quary
+		def parse_quary data
+			while @step == 0
+				line_len = data.index EOL_REGX
+				line_len += 1 if data[line_len] == EOL_R
+				quary = data.slice! 0..line_len
 				next unless quary.match(HTTP_METHODS_REGEXP)
-				request[:time_recieved] = Time.now
-				request[:method], request[:query], request[:version] = quary.split(QUARY_SPLIT_REGX)
-				request[:version] = (request[:version] || '1.1').match(HTTP_VER_REGX).to_s.to_f
-				io[:step] = 1
+				@request = HTTPRequest.new
+				@request[:io] = @io
+				@request[:time_recieved] = Time.now
+				@request[:method], @request[:query], @request[:version] = quary.split(QUARY_SPLIT_REGX)
+				@request[:version] = (@request[:version] || '1.1').match(HTTP_VER_REGX).to_s.to_f
+				@step = 1
 				return
 			end
+			store_to_cache data
 		end
 
-		EOHEADERS = /[\r]?\n/
 		HEADER_REGX = /^([^:]*):[\s]*([^\r\n]*)/
 		HEADER_SPLIT_REGX = /[;,][\s]?/
-		def self.parse_head data, request, io
-			return unless io[:step] == 1
-			loop do
-				header = data.gets
-				return unless header
-				if header.match EOHEADERS
-					if request['transfer-coding'] || (request['content-length'] && request['content-length'].to_i != 0) || request['content-type']
-						request[:body] = ''
-						io[:step] = 2
-						return
-					else
-						return complete_request request, io
-					end
-				end
+		def parse_head data
+			return unless @step == 1
+			headers_length = data.index(EOHEADERS)
+			return store_to_cache data unless headers_length
+			headers_length += (data[headers_length] == EOL_R ? 3 : 1)
+			# parse headers
+			data.slice!( 0..headers_length).lines.each do |header|
 				m = header.match(HEADER_REGX)
 				case m[1].downcase
 				when 'cookie'
-					HTTP.extract_data m[2].split(HEADER_SPLIT_REGX), request.cookies, :uri
+					HTTP.extract_data m[2].split(HEADER_SPLIT_REGX), @request.cookies, :uri
 				else
 					name = HTTP.make_utf8!(m[1]).downcase
-					request[ name ] ? (request[ name ] << ", #{HTTP.make_utf8! m[2]}"): (request[ name ] =  HTTP.make_utf8! m[2])
+					@request[ name ] ? (@request[ name ] << ", #{HTTP.make_utf8! m[2]}"): (@request[ name ] =  HTTP.make_utf8! m[2])
 				end if m
 			end
+
+			if @request['transfer-coding'] || (@request['content-length'] && @request['content-length'].to_i != 0) || @request['content-type']
+				@request[:body] = ''
+				@step = 2
+				return
+			else
+				return complete_request
+			end
+
 		end
 		CHUNK_REGX = /\A[a-z0-9A-Z]+/
 		EOCHUNK_REGX = /^0[\r]?\n/
-		def self.parse_body data, request, io
-			while io[:step] == 2
+		def parse_body data
+			while @step == 2
 
 				# check for body is needed, if exists and if complete
-				if request['transfer-coding'] == 'chunked'
+				if @request['transfer-coding'] == 'chunked'
 					# ad mid chunk logic here
 					if io[:length].to_i == 0
 						line_len = data.index EOL_REGX
@@ -135,26 +134,26 @@ module GRHttp
 						chunk = data.slice! 0..line_len
 						io[:length] = chunk.match(CHUNK_REGX).to_i(16)
 						return complete_request if chunk.match(EOCHUNK_REGX)
-						return (io[:step] =0), raise("HTTP protocol error: unable to parse chunked enocoded message.") if io[:length] == 0					
+						return (@step =0), raise("HTTP protocol error: unable to parse chunked enocoded message.") if io[:length] == 0					
 						io[:act_length] = 0
 					end
 					chunk = data.slice!(0...(io[:length] - io[:act_length]))
 					return if chunk.empty?
-					request[:body] << chunk
+					@request[:body] << chunk
 					io[:act_length] += chunk.bytesize
 					(io[:act_length] = io[:length] = 0) && (data.slice! /\A[\r\n]+/) if io[:act_length] >= io[:length]
-				elsif request['content-length']
+				elsif @request['content-length']
 					unless io[:length]
-						request['content-length'] = io[:length] = request['content-length'].to_i
+						@request['content-length'] = io[:length] = @request['content-length'].to_i
 						io[:act_length] = 0
 					end
-					request[:body] << data.slice!(0...(io[:length] - io[:act_length]))
-					io[:act_length] = request[:body].bytesize
+					@request[:body] << data.slice!(0...(io[:length] - io[:act_length]))
+					io[:act_length] = @request[:body].bytesize
 					return complete_request if io[:act_length] >= io[:length]
 					return if data.empty?
 				else 
 					GReactor.warn 'bad body request - trying to read'
-					request[:body] << data.slice!(/\A[^\r\n]*[\r]?\n[\r\n]+/)
+					@request[:body] << data.slice!(/\A[^\r\n]*[\r]?\n[\r\n]+/)
 					return complete_request
 				end
 			end 
@@ -163,41 +162,40 @@ module GRHttp
 		QUARY_REGEX = /(([a-z0-9A-Z]+):\/\/)?(([^\/\:]+))?(:([0-9]+))?([^\?\#]*)(\?([^\#]*))?/
 		PARAM_SPLIT_REGX = /[&;]/
 
-		def self.complete_request request, io
-			io[:step] = 0
+		def complete_request
+			@step = 0
 			io[:length] = nil
-			io[:request] = nil
 
-			m = request[:query].match QUARY_REGEX
-			request[:requested_protocol] = m[1] || request['x-forwarded-proto'] || ( io.ssl? ? 'https' : 'http')
-			request[:host_name] = m[4] || (request['host'] ? request['host'].match(/^[^:]*/).to_s : nil)
-			request[:port] = m[6] || (request['host'] ? request['host'].match(/:([0-9]*)/).to_a[1] : nil)
-			request[:original_path] = HTTP.decode(m[7], :uri) || '/'
-			request['host'] ||= "#{request[:host_name]}:#{request[:port]}"
+			m = @request[:query].match QUARY_REGEX
+			@request[:requested_protocol] = m[1] || @request['x-forwarded-proto'] || ( @io.ssl? ? 'https' : 'http')
+			@request[:host_name] = m[4] || (@request['host'] ? @request['host'].match(/^[^:]*/).to_s : nil)
+			@request[:port] = m[6] || (@request['host'] ? @request['host'].match(/:([0-9]*)/).to_a[1] : nil)
+			@request[:original_path] = HTTP.decode(m[7], :uri) || '/'
+			@request['host'] ||= "#{@request[:host_name]}:#{@request[:port]}"
 
 			# parse query for params - m[9] is the data part of the query
-			request[:params] ||= {}
+			@request[:params] ||= {}
 			if m[9]
-				HTTP.extract_data m[9].split(PARAM_SPLIT_REGX), request[:params]
+				HTTP.extract_data m[9].split(PARAM_SPLIT_REGX), @request[:params]
 			end
 
-			HTTP.make_utf8! request[:original_path]
-			request[:path] = request[:original_path].dup
-			request[:original_path].freeze
+			HTTP.make_utf8! @request[:original_path]
+			@request[:path] = @request[:original_path].dup
+			@request[:original_path].freeze
 
-			HTTP.make_utf8! request[:host_name] if request[:host_name]
-			HTTP.make_utf8! request[:query]
+			HTTP.make_utf8! @request[:host_name] if @request[:host_name]
+			HTTP.make_utf8! @request[:query]
 
-			request[:client_ip] = request['x-forwarded-for'].to_s.split(/,[\s]?/)[0] || (io.io.remote_address.ip_address) rescue 'unknown IP'
+			@request[:client_ip] = @request['x-forwarded-for'].to_s.split(/,[\s]?/)[0] || (io.io.remote_address.ip_address) rescue 'unknown IP'
 
-			read_body if request[:body]
+			read_body if @request[:body]
 
 			#check for server-responses
-			case request[:method]
+			case @request[:method]
 			when 'TRACE'
 				return true
 			when 'OPTIONS'
-				response = HTTPResponse.new request
+				response = HTTPResponse.new @request
 				response[:Allow] = 'GET,HEAD,POST,PUT,DELETE,OPTIONS'
 				response['access-control-allow-origin'] = '*'
 				response['content-length'] = 0
@@ -205,42 +203,53 @@ module GRHttp
 				return true
 			end
 
-			# return ws_upgrade if request.upgrade?
+			# return ws_upgrade if @request.upgrade?
 
-			# on_request request
+			# on_request @request
 
-			GR.queue [self, request], CALL_REQUEST
+			GR.queue [self, @request], CALL_REQUEST
 		end
 		CALL_REQUEST = Proc.new {|p, r| p.on_request r}
 		# review a Websocket Upgrade
-		def self.ws_upgrade request, io
-			new_handler = on_upgrade request
+		def ws_upgrade
+			new_handler = on_upgrade @request
 			return io.params[:handler] = new_handler if new_handler
 
-			response = HTTPResponse.new request, 400
+			response = HTTPResponse.new @request, 400
 			response.finish
+		end
+
+		def store_to_cache data
+			return false if data.empty?
+			io[:data] = data
+			data.clear
+		end
+		def restore_from_cache data
+			data.insert 0, io[:data].to_s
+			io[:data] = nil
+			data
 		end
 
 
 		# read the body's data and parse any incoming data.
-		def self.read_body request
+		def read_body
 			# parse content
-			case request['content-type'].to_s
+			case @request['content-type'].to_s
 			when /x-www-form-urlencoded/
-				HTTP.extract_data request.delete(:body).split(/[&;]/), request[:params], :form # :uri
+				HTTP.extract_data @request.delete(:body).split(/[&;]/), @request[:params], :form # :uri
 			when /multipart\/form-data/
-				read_multipart request, request.delete(:body)
+				read_multipart @request, @request.delete(:body)
 			when /text\/xml/
 				# to-do support xml?
-				HTTP.make_utf8! request[:body]
+				HTTP.make_utf8! @request[:body]
 				nil
 			when /application\/json/
-				JSON.parse(HTTP.make_utf8! request[:body]).each {|k, v| HTTP.add_param_to_hash k, v, request[:params]}
+				JSON.parse(HTTP.make_utf8! @request[:body]).each {|k, v| HTTP.add_param_to_hash k, v, @request[:params]}
 			end
 		end
 
 		# parse a mime/multipart body or part.
-		def self.read_multipart headers, part, name_prefix = ''
+		def read_multipart headers, part, name_prefix = ''
 			if headers['content-type'].to_s.match /multipart/
 				boundry = headers['content-type'].match(/boundary=([^\s]+)/)[1]
 				if headers['content-disposition'].to_s.match /name=/
@@ -290,11 +299,11 @@ module GRHttp
 				name << "[#{HTTP.decode(cd[:name][1..-2])}]"
 			end
 			if headers['content-type']
-				HTTP.add_param_to_hash "#{name}[data]", part, request[:params]
-				HTTP.add_param_to_hash "#{name}[type]", HTTP.make_utf8!(headers['content-type']), request[:params]
-				cd.each {|k,v|  HTTP.add_param_to_hash "#{name}[#{k.to_s}]", HTTP.make_utf8!(v[1..-2]), request[:params] unless k == :name}
+				HTTP.add_param_to_hash "#{name}[data]", part, @request[:params]
+				HTTP.add_param_to_hash "#{name}[type]", HTTP.make_utf8!(headers['content-type']), @request[:params]
+				cd.each {|k,v|  HTTP.add_param_to_hash "#{name}[#{k.to_s}]", HTTP.make_utf8!(v[1..-2]), @request[:params] unless k == :name}
 			else
-				HTTP.add_param_to_hash name, HTTP.decode(part, :utf8), request[:params]
+				HTTP.add_param_to_hash name, HTTP.decode(part, :utf8), @request[:params]
 			end
 			true
 		end

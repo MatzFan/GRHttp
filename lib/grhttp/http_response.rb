@@ -173,7 +173,7 @@ module GRHttp
 			@finished = true
 			# io.disconnect unless headers['keep-alive']
 			# log
-			GReactor.log_raw "#{@request[:client_ip]} [#{Time.now.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:requested_protocol]}\/#{@request[:version]}\" #{@status} #{bytes_sent.to_s} #{"%0.3f" % ((Time.now - @request[:time_recieved])*1000)}ms\n"
+			GReactor.log_raw "#{@request[:client_ip]} [#{Time.now.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:requested_protocol]}\/#{@request[:version]}\" #{@status} #{bytes_sent.to_s} #{"%i" % ((Time.now - @request[:time_recieved])*1000)}ms\n" # %0.3f
 		end
 
 		# Danger Zone (internally used method, use with care): attempts to finish the response - if it was not flaged as streaming or completed.

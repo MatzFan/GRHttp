@@ -7,10 +7,10 @@ module GRHttp
 	#
 	class HTTPRequest < Hash
 
-		# def initialize io
-		# 	super()
-		# 	self[:io] = io
-		# end
+		def initialize io = nil
+			super()
+			self[:io] = io if io
+		end
 
 		public
 
