@@ -1,3 +1,7 @@
+require 'time'
+require 'json'
+require 'uri'
+
 require "grhttp/version"
 
 require 'greactor'

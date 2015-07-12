@@ -37,7 +37,10 @@ module GRHttp
 		# The default implementation simply sends back the parsed request's object.
 		def on_request request
 			length = request.to_s.bytesize
-			send "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: #{length}\r\nConnection: keep-alive\r\nKeep-Alive: 5\r\n\r\n#{request.to_s}"
+			response = HTTPResponse.new request
+			response << request.to_s
+			response.finish
+			# send "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: #{length}\r\nConnection: keep-alive\r\nKeep-Alive: 5\r\n\r\n#{request.to_s}"
 		end
 
 		# Override this method to handle Websocket connections.

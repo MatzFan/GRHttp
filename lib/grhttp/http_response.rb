@@ -164,31 +164,16 @@ module GRHttp
 			@body.is_a?(Array) ? @body.clear : ( @body = [] )
 		end
 
-		# prep for rack response
-		def prep_rack
-			@headers['content-length'] ||= body[0].bytesize.to_s if !headers_sent? && body.is_a?(Array) && body.length == 1
-			fix_cookie_headers
-		end
-
-
-		if defined?(PLEZI_ON_RACK)
-			# does nothing.
-			def finish
-				false
-			end
-		else
-			# Sends the response and flags the response as complete. Future data should not be sent. Your code might attempt sending data (which would probbaly be ignored by the client or raise an exception).
-			def finish
-				raise "Response already sent" if @finished
-				@headers['content-length'] ||= body[0].bytesize if !headers_sent? && body.is_a?(Array) && body.length == 1
-				self.send
-				io.send( (@chunked) ? "0\r\n\r\n" : nil)
-				@finished = true
-				# io.disconnect unless headers['keep-alive']
-				# log
-				GReactor.log_raw "#{request[:client_ip]} [#{Time.now.utc}] \"#{request[:method]} #{request[:original_path]} #{request[:requested_protocol]}\/#{request[:version]}\" #{status} #{bytes_sent.to_s} #{"%0.3f" % ((Time.now - request[:time_recieved])*1000)}ms\n"
-			end
-			
+		# Sends the response and flags the response as complete. Future data should not be sent. Your code might attempt sending data (which would probbaly be ignored by the client or raise an exception).
+		def finish
+			raise "Response already sent" if @finished
+			@headers['content-length'] ||= body[0].bytesize if !headers_sent? && body.is_a?(Array) && body.length == 1
+			self.send
+			io.send "0\r\n\r\n" if @chunked
+			@finished = true
+			# io.disconnect unless headers['keep-alive']
+			# log
+			GReactor.log_raw "#{@request[:client_ip]} [#{Time.now.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:requested_protocol]}\/#{@request[:version]}\" #{@status} #{bytes_sent.to_s} #{"%0.3f" % ((Time.now - @request[:time_recieved])*1000)}ms\n"
 		end
 
 		# Danger Zone (internally used method, use with care): attempts to finish the response - if it was not flaged as streaming or completed.
