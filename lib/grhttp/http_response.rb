@@ -73,7 +73,8 @@ module GRHttp
 		# if HTTP streaming is used, remember to call #send to send the data.
 		# it is also possible to only use #send while streaming, although performance should be considered when streaming using #send rather then caching using #<<.
 		def << str
-			body.push str
+			@body ? @body.push(str) : (request.head? ? send_body(str) : false)
+			true
 			# send if streaming?
 		end
 
@@ -151,23 +152,12 @@ module GRHttp
 		# the response will remain open for more data to be sent through (using `response << data` and `response.send`).
 		def send(str = nil)
 			raise 'HTTPResponse IO MISSING: cannot send http response without an io.' unless @io
-			body << str if str && body.is_a?(Array)
 			send_headers
 			return if request.head?
-			if @chunked
-				body.each do |s|
-					io.send "#{s.bytesize.to_s(16)}\r\n"
-					io.send s
-					io.send "\r\n"
-					@bytes_sent += s.bytesize
-				end
-			else
-				body.each do |s|
-					io.send s
-					@bytes_sent += s.bytesize
-				end
-			end
-			@body.is_a?(Array) ? @body.clear : ( @body = [] )
+			return send_body(str) if @body.nil? || (@body.is_a?(Array) && @body.empty?)
+			@body << str
+			send_body @body.join
+			@body = nil
 		end
 
 		# Sends the response and flags the response as complete. Future data should not be sent. Your code might attempt sending data (which would probbaly be ignored by the client or raise an exception).
@@ -175,7 +165,7 @@ module GRHttp
 			raise "Response already sent" if @finished
 			@headers['content-length'] ||= body[0].bytesize if !headers_sent? && body.is_a?(Array) && body.length == 1
 			self.send
-			io.send "0\r\n\r\n" if @chunked
+			@io.send "0\r\n\r\n" if @chunked
 			@finished = true
 			# io.disconnect unless headers['keep-alive']
 			# log
@@ -206,24 +196,25 @@ module GRHttp
 			return false if @headers.frozen?
 			fix_cookie_headers
 			headers['cache-control'] ||= 'no-cache'
+			out = ''
 
-			io.send "#{@http_version} #{status} #{STATUS_CODES[status] || 'unknown'}\r\nDate: #{Time.now.httpdate}\r\n"
+			out << "#{@http_version} #{status} #{STATUS_CODES[status] || 'unknown'}\r\nDate: #{Time.now.httpdate}\r\n"
 
 			unless headers['connection']
-				io.send "Connection: Keep-Alive\r\nKeep-Alive: timeout=5\r\n"
+				out << "Connection: Keep-Alive\r\nKeep-Alive: timeout=5\r\n"
 			end
 
 			if headers['content-length']
 				@chunked = false
 			else
 				@chunked = true
-				io.send "Transfer-Encoding: chunked\r\n"
+				out << "Transfer-Encoding: chunked\r\n"
 			end
-
-			headers.each {|k,v| io.send "#{k.to_s}: #{v}\r\n"}
-			@cookies.each {|k,v| io.send "Set-Cookie: #{k.to_s}=#{v.to_s}\r\n"}
-			io.send "\r\n"
+			headers.each {|k,v| out << "#{k.to_s}: #{v}\r\n"}
+			@cookies.each {|k,v| out << "Set-Cookie: #{k.to_s}=#{v.to_s}\r\n"}
+			out << "\r\n"
 			@headers.freeze
+			io.send out
 			# @cookies.freeze
 		end
 		
@@ -289,6 +280,17 @@ module GRHttp
 		}
 
 		protected
+
+		def send_body data
+			if @chunked
+				@io.send "#{data.bytesize.to_s(16)}\r\n#{data}\r\n"
+				@bytes_sent += data.bytesize
+			else
+				io.send data
+				@bytes_sent += data.bytesize
+			end
+
+		end
 
 	end
 

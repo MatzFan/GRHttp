@@ -23,8 +23,8 @@ module GRHttp
 			# length = request.to_s.bytesize
 			# send "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: #{length}\r\nConnection: keep-alive\r\nKeep-Alive: 5\r\n\r\n#{request.to_s}"
 			# t_now = Time.now
-			# GR.log_raw "#{@request[:client_ip]} [#{t_now.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:requested_protocol]}\/#{@request[:version].to_s}\" #{@status} #{"%i" % ((t_now - @request[:time_recieved])*1000)}ms\n" # %0.3f
-			# puts "#{@request[:client_ip]} [#{Time.now.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:requested_protocol]}\/#{@request[:version]}\" #{@status} #{bytes_sent.to_s} #{"%i" % ((Time.now - @request[:time_recieved])*1000)}ms\n" # %0.3f
+			# GR.log_raw "#{request[:client_ip]} [#{t_now.utc}] \"#{request[:method]} #{request[:original_path]} #{request[:requested_protocol]}\/#{request[:version].to_s}\" #{status} #{"%i" % ((t_now - request[:time_recieved])*1000)}ms\n" # %0.3f
+			# puts "#{request[:client_ip]} [#{Time.now.utc}] \"#{request[:method]} #{request[:original_path]} #{request[:requested_protocol]}\/#{request[:version]}\" #{status} #{bytes_sent.to_s} #{"%i" % ((Time.now - request[:time_recieved])*1000)}ms\n" # %0.3f
 			# request[:io].send "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\nConnection: keep-alive\r\nKeep-Alive: 5\r\n\r\nHello World\r\n"
 		end
 
@@ -104,8 +104,8 @@ module GRHttp
 		HEADER_SPLIT_REGX = /[;,][\s]?/
 
 		def complete_request
-					puts 's 4'
 			request = @request
+			@request = HTTPRequest.new io
 			request[:client_ip] = @request['x-forwarded-for'].to_s.split(/,[\s]?/)[0] || (io.io.remote_address.ip_address) rescue 'unknown IP'
 			request[:version] = request[:version].match(/[\d\.]+/)[0]
 
@@ -137,8 +137,6 @@ module GRHttp
 			response = HTTPResponse.new request
 			on_request request, response
 			response.try_finish
-			@request = HTTPRequest.new io
-
 		end
 
 		public
