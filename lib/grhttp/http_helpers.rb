@@ -220,11 +220,12 @@ module GRHttp
 			#check for server-responses
 			case request.request_method
 			when 'TRACE'
-				io[:request] = nil
+				request[:io][:request] = nil
+				request[:io].close
 				return false
 			when 'OPTIONS'
 				response = HTTPResponse.new request
-				io[:request] = nil
+				request[:io][:request] = nil
 				response[:Allow] = 'GET,HEAD,POST,PUT,DELETE,OPTIONS'
 				response['access-control-allow-origin'] = '*'
 				response['content-length'] = 0
