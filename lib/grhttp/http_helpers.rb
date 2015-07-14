@@ -210,7 +210,8 @@ module GRHttp
 			request[:port] = tmp[1] || nil
 
 			tmp = request[:query].split '?', 2
-			request[:original_path] = tmp[0]
+			request[:path] = tmp[0].chomp('/')
+			request[:original_path] = tmp[0].freeze
 			request[:quary_params] = tmp[1]
 			HTTP.extract_data tmp[1].split(PARAM_SPLIT_REGX), (request[:params] ||= {}) if tmp[1]
 			HTTP._read_body request if request[:body]
