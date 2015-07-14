@@ -11,8 +11,8 @@ module GRHttp
 		attr_reader :headers
 		#the flash cookie-jar (single-use cookies, that survive only one request).
 		attr_reader :flash
-		#the response's body container (defaults to an array, but can be replaces by any obect that supports `each` - `close` is NOT supported - call `close` as a callback block after `send` if you need to close the object).
-		attr_accessor :body
+		#the response's body buffer container (an array). This object is removed once the , but can be replaces by any obect that supports `each` - `close` is NOT supported - call `close` as a callback block after `send` if you need to close the object).
+		attr_reader :body
 		#bytes sent to the asynchronous que so far - excluding headers (only the body object).
 		attr_reader :bytes_sent
 		#the io through which the response will be sent.
@@ -26,8 +26,12 @@ module GRHttp
 		# hence, to initialize a response object, a request must be set.
 		#
 		# use, at the very least `HTTPResponse.new request`
-		def initialize request, status = 200, headers = {}, body = []
-			@request, @status, @headers, @body, @io = request, status, headers, body, request[:io]
+		def initialize request, status = 200, headers = {}, content = nil
+			@request = request
+			@status = status
+			@headers = headers
+			@body = content || []
+			@io = request[:io]
 			@request.cookies.set_response self
 			@http_version = 'HTTP/1.1' # request.version
 			@bytes_sent = 0
@@ -68,10 +72,9 @@ module GRHttp
 			@request.cookies
 		end
 
-		# pushes data to the body of the response. this is the preferred way to add data to the response.
+		# pushes data to the buffer of the response. this is the preferred way to add data to the response.
 		#
-		# if HTTP streaming is used, remember to call #send to send the data.
-		# it is also possible to only use #send while streaming, although performance should be considered when streaming using #send rather then caching using #<<.
+		# If the headers were already sent, this will also send the data and hang until the data was sent.
 		def << str
 			@body ? @body.push(str) : (request.head? ? send_body(str) : false)
 			self
@@ -138,7 +141,7 @@ module GRHttp
 			set_cookie name, nil
 		end
 
-		# clears the response object, unless headers were already sent (use `response.body.clear` to clear only the unsent body).
+		# clears the response object, unless headers were already sent.
 		#
 		# returns false if the response was already sent.
 		def clear
@@ -152,11 +155,11 @@ module GRHttp
 		# the response will remain open for more data to be sent through (using `response << data` and `response.send`).
 		def send(str = nil)
 			raise 'HTTPResponse IO MISSING: cannot send http response without an io.' unless @io
+			@body << str if @body && str
 			send_headers
 			return if request.head?
-			return send_body(str) if @body.nil? || (@body.is_a?(Array) && @body.empty?)
-			@body << str
-			send_body @body.join
+			return send_body(str) if @body.nil?
+			send_body @body.is_a?(String) ? @body : @body.join
 			@body = nil
 			self
 		end
@@ -164,7 +167,7 @@ module GRHttp
 		# Sends the response and flags the response as complete. Future data should not be sent. Your code might attempt sending data (which would probbaly be ignored by the client or raise an exception).
 		def finish
 			raise "Response already sent" if @finished
-			@headers['content-length'] ||= body[0].bytesize if !headers_sent? && body.is_a?(Array) && body.length == 1
+			@headers['content-length'] ||= (@body = @body.join).bytesize if !headers_sent? && @body.is_a?(Array)
 			self.send
 			@io.send "0\r\n\r\n" if @chunked
 			@finished = true
