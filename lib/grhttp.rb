@@ -17,6 +17,14 @@ require "grhttp/http_response"
 
 require "grhttp/api"
 
+# please read the {file:README.md} file for an introduction to GRHttp.
+#
+# here's the famous Hello World to get you started:
+#
+#       require 'grhttp'
+#
+#       GRHttp.start {   GRHttp.listen {|request, response| 'Hello World!' }      }
+#
 module GRHttp
 	# using GReactor
 

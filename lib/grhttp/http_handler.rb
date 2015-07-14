@@ -20,7 +20,7 @@ module GRHttp
 					if HTTP._parse_http io, data
 							request = io[:request]; io[:request] = nil
 							response = HTTPResponse.new request
-							ret = ((request.upgrade? ? io.params[:ws_handler] : io.params[:http_handler]) || NO_HANDLER).call(request, response)
+							ret = ((request.upgrade? ? io.params[:upgrade_handler] : io.params[:http_handler]) || NO_HANDLER).call(request, response)
 							if ret.is_a?(String)
 								response << ret 
 							elsif ret == false
