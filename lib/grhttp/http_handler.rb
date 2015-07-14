@@ -1,19 +1,10 @@
 require 'stringio'
 module GRHttp
 
-	# This is a basic HTTP handler class for the [GReactor](https://github.com/boazsegev/GReactor).
-	#
-	# Use this class to create a basic HTTP server. 
-	#
-	# To use the HTTP class, inherit the class and override any of the following methods:
-	# #on_connect:: called AFTER a connection is accepted but BEFORE ant requests are handled.
-	# #on_request(request, response):: called whenever data is recieved from the IO.
-	# #on_disconnect:: called AFTER the IO is closed.
-	# #on_upgrade(request):: called BEFORE a WebSocket connection is established. Should return the WebSocket handler (replaces this HTTP Protocol object for the specific connection) or false (refuses the connection).
-	#
-	# Do NOT override the `#on_message data` method, as this class uses the #on_message method to parse incoming requests.
+	# This module and it's members are used internally and AREN'T part of the public API.
 	#
 	module Base
+		# The GReactor's[https://github.com/boazsegev/GReactor] HTTP handler used by the GRHttp.
 		module HTTPHandler
 			extend HTTP
 

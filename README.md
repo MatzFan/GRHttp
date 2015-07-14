@@ -1,6 +1,6 @@
 # GRHttp - A native Ruby generic HTTP and WebSocket server.
 
-NOT YET...
+Wait for it... - For now I just have the HTTP part finished... almost (the API design might change).
 
 This is a native Ruby HTTP and WebSocket multi-threaded server that uses the [GReactor](https://github.com/boazsegev/GReactor) library.
 
@@ -24,7 +24,103 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+GRHttp allows you to write a quick web service based of the [GReactor](https://github.com/boazsegev/GReactor) library - So you get Asynchronous events, timed event and a Server (or servers) - all in a native Ruby package.
+
+You can use GRHttp for both HTTP and Websocket services.
+
+### HTTP Server
+
+Allow me to welcome the world famous 'Hello World'!
+
+```ruby
+
+GRHttp.start {   GRHttp.listen {|request, response| 'Hello World!' }      }
+
+exit # exit between examples, to clear the listening services.
+
+```
+
+* [Test it at http://localhost:3000](http://localhost:3000).
+
+Ammm... This example was too quick to explain anything or show off all the bells and whistles, so, let's try again, this time - Bigger:
+
+
+```ruby
+
+# GRHttp doesn't have a .start method, so it deffers to the GReactor library.
+#
+# This means we are actually calling GReactor.start which can accept a block and hang until it's done.
+GRHttp.start do
+
+   # GRHttp.listen creates a webservice and accepts an optional block that acts as the HTTP handler.
+   GRHttp.listen(timeout: 3, port: 3000) do |request, response|
+      # if we return a string, the server automatically
+      # appends the string to the end of the response
+      'Hello World!'
+   end
+
+   # We can also add an SSL version of the Hello World...
+   # We'll take a longer route:
+
+   # Create a hendler - an object that responds to #call(request, response)
+   http_handler = Proc.new do |request, response|
+      # This time, we won't use short-cuts. We'll add are content traditionally:
+      response << 'Hello SSL World!'
+   end
+
+   # We'll set up an SSL service as well.
+   GRHttp.listen port: 3030, ssl: true, http_handler: http_handler
+
+   # Clear the GReactor's listener stack between examples
+   GRHttp.on_shutdown { GRHttp.clear_listeners;  GRHttp.info 'Clear :-)'}
+
+end
+
+```
+
+* [Test it at http://localhost:3000](http://localhost:3000).
+* [Test The SSL version at http://localhost:3030](http://localhost:3030).
+
+We can also make this object oriented:
+
+```ruby
+
+# in a real world example, this would probably
+# be your HTTP router object (can be class instance).
+module MyHandler
+   def self.call request, response
+      if request.protocol == 'https'
+         # it's easy to set (and read) cookies
+         response.cookies[:ssl_visited] = true
+         # there's even a temporary cookie stash (single use cookies)\*
+         response.flash[:on_and_off] = true unless response.flash[:on_and_off]
+         response << 'Hello SSL world!'
+      else
+         response << 'Hello Clear Text world!'
+      end
+   end
+end
+
+GRHttp.start do
+
+   GRHttp.listen port: 3000, http_handler: MyHandler
+   GRHttp.listen port: 3030, http_handler: MyHandler, ssl: true
+
+   # Clear the GReactor's listener stack between examples
+   GRHttp.on_shutdown { GRHttp.clear_listeners;  GRHttp.info 'Clear :-)'}
+
+end
+
+# \* Google's Chrome might mess your flash cookie jar
+#    by requesting the `favicon.ico` while sending and setting cookies...
+#    It works as expected, but Chrome doesn't.
+
+```
+
+
+### Websocket services
+
+Wait for it...
 
 ## Development
 

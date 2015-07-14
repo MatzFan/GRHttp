@@ -1,15 +1,7 @@
 require 'stringio'
 module GRHttp
 
-	# This is a basic HTTP handler class for the reactor.
-	#
-	# To use the HTTP class, inherit the class and override any of the following methods:
-	# #on_connect:: called AFTER a connection is accepted but BEFORE ant requests are handled.
-	# #on_request request:: called whenever data is recieved from the IO.
-	# #on_disconnect:: called AFTER the IO is closed.
-	# #on_upgrade:: called BEFORE a WebSocket connection is established. Should return the WebSocket handler (replaces this HTTP Protocol object for the specific connection) or false (refuses the connection).
-	#
-	# Do NOT override the `#on_message data` method, as this class uses the #on_message method to parse incoming requests.
+	# These are some HTTP helper methods supplied for your convinience and the Generic HTTP server's use.
 	#
 	module HTTP
 
