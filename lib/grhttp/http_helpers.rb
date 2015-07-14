@@ -215,6 +215,23 @@ module GRHttp
 			request[:quary_params] = tmp[1]
 			HTTP.extract_data tmp[1].split(PARAM_SPLIT_REGX), (request[:params] ||= {}) if tmp[1]
 			HTTP._read_body request if request[:body]
+
+
+			#check for server-responses
+			case request.request_method
+			when 'TRACE'
+				io[:request] = nil
+				return false
+			when 'OPTIONS'
+				response = HTTPResponse.new request
+				io[:request] = nil
+				response[:Allow] = 'GET,HEAD,POST,PUT,DELETE,OPTIONS'
+				response['access-control-allow-origin'] = '*'
+				response['content-length'] = 0
+				response.finish
+				return false
+			end
+
 			true
 
 			# if m = request[:query].match FULL_QUARY_REGEX
