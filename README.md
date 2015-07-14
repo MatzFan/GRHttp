@@ -34,17 +34,28 @@ Allow me to welcome the world famous 'Hello World'!
 
 ```ruby
 require 'grhttp'
-
 GRHttp.start {   GRHttp.listen {|request, response| 'Hello World!' }      }
-
 exit # exit between examples, to clear the listening services.
-
 ```
 
 * [Test it at http://localhost:3000](http://localhost:3000).
 
-Ammm... This example was too quick to explain anything or show off all the bells and whistles, so, let's try again, this time - Bigger:
+There's no reason to be hanging around while the server works...
 
+```ruby
+require 'grhttp'
+GRHttp.start
+GRHttp.listen(timeout: 3, port: 3000) {|request, response| 'Hello!' }
+GRHttp.on_shutdown { GRHttp.clear_listeners;  GRHttp.info 'Clear :-)'}
+puts 'We can keep working...'
+puts 'We can even restart the server:'
+GRHttp.restart # restart doesn't invoke the shutdown callbacks.
+puts 'Press ^C to stop the service.'
+GRHttp.join
+
+```
+
+Ammm... This example was too quick to explain anything or show off all the bells and whistles, so, let's try again, this time - Bigger:
 
 ```ruby
 require 'grhttp'
