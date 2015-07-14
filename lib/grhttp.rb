@@ -19,7 +19,7 @@ require "grhttp/api"
 
 # please read the {file:README.md} file for an introduction to GRHttp.
 #
-# here's the famous Hello World to get you started:
+# here's the famous Hello World to get you thinking:
 #
 #       require 'grhttp'
 #

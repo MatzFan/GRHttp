@@ -22,6 +22,7 @@ module GRHttp
 			.gsub(/</n, '&lt;')
 		end
 		
+		# Decodes data from :form, :html and :url (default) escaped strings.
 		def self.decode object, decode_method = :form
 			if object.is_a?(Hash)
 				object.values.each {|v| decode v, decode_method}
@@ -56,6 +57,7 @@ module GRHttp
 				raise "GReactor Raising Hell (don't misuse us)!"
 			end
 		end
+		# Encodes data for :html, :url and :form (default) escaped strings.
 		def self.encode object, decode_method = :form
 			if object.is_a?(Hash)
 				object.values.each {|v| encode v, decode_method}

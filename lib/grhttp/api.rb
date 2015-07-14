@@ -10,6 +10,7 @@ module GRHttp
 	#
 	# The following parameters are recognized:
 	# port:: The port number to listen to. Defaults to 3000 and increments by 1 with every portless listen call (3000, 3001, 3002...).
+	# timeout:: The timeout for the connection (Keep-Alive HTTP/1.1 is the default behavior). Defaults to 5 seconds.
 	# http_handler:: The object that will handle the connection. Should answer to `#call request, response`.
 	# upgrade_handler:: The object that will handle WebSocket upgrade requests. Should answer to `#call request, response`, should return the new WebSocket Handler while setting any cookies for the response or false (ro refuse the request).
 	# ssl:: Set this parameter to true to listen and react to SSL connections with a self signed certificate.

@@ -2,7 +2,7 @@ module GRHttp
 
 	class HTTPRequest < Hash
 
-		# set magic cookies
+		# Sets magic cookies - NOT part of the API.
 		#
 		# magic cookies keep track of both incoming and outgoing cookies, setting the response's cookies as well as the combined cookie respetory (held by the request object).
 		#

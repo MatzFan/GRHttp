@@ -19,8 +19,6 @@ module GRHttp
 		attr_reader :io
 		#the request.
 		attr_accessor :request
-		#the http version header
-		attr_accessor :http_version
 
 		# the response object responds to a specific request on a specific io.
 		# hence, to initialize a response object, a request must be set.
@@ -180,47 +178,6 @@ module GRHttp
 		def try_finish
 			finish unless @finished
 		end
-
-		# Danger Zone (internally used method, use with care): fix response's headers before sending them (date, connection and transfer-coding).
-		def fix_cookie_headers
-			# remove old flash cookies
-			request.cookies.keys.each do |k|
-				if k.to_s.start_with? 'magic_flash_'
-					set_cookie k, nil
-					flash.delete k
-				end
-			end
-			#set new flash cookies
-			@flash.each do |k,v|
-				set_cookie "magic_flash_#{k.to_s}", v
-			end
-		end
-		# Danger Zone (internally used method, use with care): fix response's headers before sending them (date, connection and transfer-coding).
-		def send_headers
-			return false if @headers.frozen?
-			fix_cookie_headers
-			headers['cache-control'] ||= 'no-cache'
-			out = ''
-
-			out << "#{@http_version} #{status} #{STATUS_CODES[status] || 'unknown'}\r\nDate: #{Time.now.httpdate}\r\n"
-
-			unless headers['connection']
-				out << "Connection: Keep-Alive\r\nKeep-Alive: timeout=5\r\n"
-			end
-
-			if headers['content-length']
-				@chunked = false
-			else
-				@chunked = true
-				out << "Transfer-Encoding: chunked\r\n"
-			end
-			headers.each {|k,v| out << "#{k.to_s}: #{v}\r\n"}
-			@cookies.each {|k,v| out << "Set-Cookie: #{k.to_s}=#{v.to_s}\r\n"}
-			out << "\r\n"
-			@headers.freeze
-			io.send out
-			# @cookies.freeze
-		end
 		
 		# response status codes, as defined.
 		STATUS_CODES = {100=>"Continue",
@@ -285,6 +242,48 @@ module GRHttp
 
 		protected
 
+		# Danger Zone (internally used method, use with care): fix response's headers before sending them (date, connection and transfer-coding).
+		def fix_cookie_headers
+			# remove old flash cookies
+			request.cookies.keys.each do |k|
+				if k.to_s.start_with? 'magic_flash_'
+					set_cookie k, nil
+					flash.delete k
+				end
+			end
+			#set new flash cookies
+			@flash.each do |k,v|
+				set_cookie "magic_flash_#{k.to_s}", v
+			end
+			@flash.freeze
+		end
+		# Danger Zone (internally used method, use with care): fix response's headers before sending them (date, connection and transfer-coding).
+		def send_headers
+			return false if @headers.frozen?
+			fix_cookie_headers
+			headers['cache-control'] ||= 'no-cache'
+			out = ''
+
+			out << "#{@http_version} #{@status} #{STATUS_CODES[@status] || 'unknown'}\r\nDate: #{Time.now.httpdate}\r\n"
+
+			unless headers['connection']
+				out << "Connection: Keep-Alive\r\nKeep-Alive: timeout=5\r\n"
+			end
+
+			if headers['content-length']
+				@chunked = false
+			else
+				@chunked = true
+				out << "Transfer-Encoding: chunked\r\n"
+			end
+			headers.each {|k,v| out << "#{k.to_s}: #{v}\r\n"}
+			@cookies.each {|k,v| out << "Set-Cookie: #{k.to_s}=#{v.to_s}\r\n"}
+			out << "\r\n"
+			@headers.freeze
+			io.send out
+		end
+
+		# sends the body or part thereof
 		def send_body data
 			if @chunked
 				@io.send "#{data.bytesize.to_s(16)}\r\n#{data}\r\n"
