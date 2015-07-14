@@ -131,6 +131,38 @@ end
 
 ### Websocket services
 
+I'm still working on this one... but here's a teaser - A "Hello World!" variation with a WebSocket Echo Server
+
+We'll be using the same handler to handle regular HTTP requests, upgrade requests and WebSocket requests, all at once:
+
+```ruby
+module MyServer
+    module_function
+    def on_open e
+        puts 'WebSocket Open!'
+        e << 'Hello!'        
+    end
+    def on_message e
+        e << e.data
+    end
+    def on_close e
+        puts 'WebSocket Closed!'
+    end
+    def call request, response
+      if request.upgrade?
+        return false if request.path == '/refuse'
+        return self
+      end
+      return false if request.path == '/refuse'
+      response << "Hello World!\r\n\r\nThe Request:\r\n#{request.to_s}"
+    end
+end
+
+GRHttp.start do
+    GRHttp.listen upgrade_handler: MyServer, http_handler: MyServer
+end
+```
+
 Wait for it...
 
 ## Development

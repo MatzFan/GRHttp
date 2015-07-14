@@ -1,42 +1,37 @@
 require 'stringio'
 module GRHttp
 
-	# This module and it's members are used internally and AREN'T part of the public API.
-	#
-	module Base
-		# The GReactor's[https://github.com/boazsegev/GReactor] HTTP handler used by the GRHttp.
-		module HTTPHandler
-			extend HTTP
+	class WSEvent
+		attr_reader :io, :data
 
-			module_function
-
-			# This method is called by the reactor.
-			# By default, this method reads the data from the IO and calls the `#on_message data` method.
-			#
-			# This method is called within a lock on the connection (Mutex) - craeful from double locking.
-			def call io
-				data = StringIO.new io.read.to_s
-				until data.eof?
-					if HTTP._parse_http io, data
-							request = io[:request]; io[:request] = nil
-							response = HTTPResponse.new request
-							ret = ((request.upgrade? ? (WSHandler.is_valid_request?(request, response) ? io.params[:upgrade_handler] : false) : io.params[:http_handler]) || NO_HANDLER).call(request, response)
-							if ret.is_a?(String) && !response.finished?
-								response << ret 
-							elsif ret == false
-								response.clear && (response.status = 404) && (response << HTTPResponse::STATUS_CODES[404])
-							elsif ret && request.upgrade?
-								WSHandler.http_handshake request, response, ret
-							end
-							response.try_finish
-					end
-				end
-			end
-
-			protected
-			NO_HANDLER = Proc.new { |i,o| false }
-
+		def initialize io, data = nil
+			@io = io
+			@data = data
 		end
+
+		def write data
+			# should synchronize?
+			# @io.locker.synchronize { ... } 
+			@io.send Base::WSHandler.frame_data(@io, data.to_s) if data
+		end
+		alias :send :write
+		alias :<< :write
+		def close
+			@io.send( CLOSE_FRAME )
+			@io.close
+		end
+		alias :disconnect :close
+		def ping
+			@io.send( PING_FRAME )
+		end
+		def pong
+			@io.send( PONG_FRAME )
+		end
+
+		protected
+		PONG_FRAME = "\x8A\x00".freeze
+		PING_FRAME = "\x89\x00".freeze
+		CLOSE_FRAME = "\x88\x00".freeze
 	end
 end
 
