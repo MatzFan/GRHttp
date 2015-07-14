@@ -41,6 +41,7 @@ module GRHttp
 				# should consider adopting the websocket gem for handshake and framing:
 				# https://github.com/imanel/websocket-ruby
 				# http://www.rubydoc.info/github/imanel/websocket-ruby
+				return refuse response unless handler
 				io = request[:io]
 				response.status = 101
 				response['upgrade'] = 'websocket'
@@ -73,11 +74,7 @@ module GRHttp
 										# (request['sec-websocket-extensions'].split(/[\s]*[,][\s]*/).reject {|ex| ex == '' || SUPPORTED_EXTENTIONS[ex.split(/[\s]*;[\s]*/)[0]] } ).empty? &&
 										(request['sec-websocket-version'].to_s.downcase.split(/[, ]/).map {|s| s.strip} .include?( '13' ))
 
-				response.status = 400
-				response['sec-websocket-extensions'] = SUPPORTED_EXTENTIONS.keys.join(', ')
-				response['sec-websocket-version'] = '13'
-				response.finish
-				false
+				refuse response
 			end
 
 			# Formats the data as one or more WebSocket frames.
@@ -129,6 +126,14 @@ module GRHttp
 			SUPPORTED_EXTENTIONS = {}
 			CLOSE_FRAME = "\x88\x00".freeze
 			message_size_limit = 0
+
+			def self.refuse response
+				response.status = 400
+				response['sec-websocket-extensions'] = SUPPORTED_EXTENTIONS.keys.join(', ')
+				response['sec-websocket-version'] = '13'
+				response.finish
+				false
+			end
 
 			# parse the message and send it to the handler
 			#
