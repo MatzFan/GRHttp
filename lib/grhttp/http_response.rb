@@ -74,7 +74,7 @@ module GRHttp
 		# it is also possible to only use #send while streaming, although performance should be considered when streaming using #send rather then caching using #<<.
 		def << str
 			@body ? @body.push(str) : (request.head? ? send_body(str) : false)
-			true
+			self
 			# send if streaming?
 		end
 
@@ -144,7 +144,7 @@ module GRHttp
 		def clear
 			return false if headers.frozen? || @finished
 			@status, @body, @headers, @cookies = 200, [], {}, {}
-			true
+			self
 		end
 
 		# sends the response object. headers will be frozen (they can only be sent at the head of the response).
@@ -158,6 +158,7 @@ module GRHttp
 			@body << str
 			send_body @body.join
 			@body = nil
+			self
 		end
 
 		# Sends the response and flags the response as complete. Future data should not be sent. Your code might attempt sending data (which would probbaly be ignored by the client or raise an exception).

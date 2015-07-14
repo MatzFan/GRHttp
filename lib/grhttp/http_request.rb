@@ -10,6 +10,8 @@ module GRHttp
 		def initialize io = nil
 			super()
 			self[:io] = io if io
+			self[:cookies] = Cookies.new
+			self[:params] = {}
 		end
 
 		public
@@ -28,11 +30,11 @@ module GRHttp
 		end
 		# the parameters sent by the client.
 		def params
-			self[:params] ||= {}
+			self[:params]
 		end
 		# the cookies sent by the client.
 		def cookies
-			self[:cookies] ||= Cookies.new
+			self[:cookies]
 		end
 
 		# the query string
