@@ -97,7 +97,6 @@ require 'grhttp'
 
 module MyHandler
    def self.call request, response
-      return false if request.path == '/refuse'
       if request.protocol == 'https'
          response.cookies[:ssl_visited] = true
            # there's even a temporary cookie stash (single use cookies)\*
@@ -106,6 +105,7 @@ module MyHandler
       else
          response << 'Hello Clear Text world!'
       end
+      return false if request.path == '/refuse'
       true
    end
 end
@@ -125,6 +125,8 @@ end
 #    It works as expected, but Chrome's refresh might be over-extensive.
 
 ```
+
+* [Test the `/refuse` path at http://localhost:3000/refuse](http://localhost:3000/refuse).
 
 
 ### Websocket services
