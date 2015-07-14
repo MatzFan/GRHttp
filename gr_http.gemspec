@@ -9,8 +9,8 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Boaz Segev"]
   spec.email         = ["boaz@2be.co.il"]
 
-  spec.summary       = %q{A native Ruby generic HTTP and WebSocket server.}
-  spec.description   = %q{A native Ruby generic HTTP and WebSocket server.}
+  spec.summary       = %q{A native Ruby generic HTTP and WebSocket server (uses the GReactor library).}
+  spec.description   = %q{A native Ruby generic HTTP and WebSocket server (uses the GReactor library).}
   spec.homepage      = "https://github.com/boazsegev/HTTP-WS-GR/"
   spec.license       = "MIT"
 

@@ -52,31 +52,25 @@ require 'grhttp'
   # GRHttp doesn't have a .start method, so it deffers to the GReactor library.
   # This means we are actually calling GReactor.start which can accept a block and hang until it's done.
 GRHttp.start do
-
      # GRHttp.listen creates a webservice and accepts an optional block that acts as the HTTP handler.
    GRHttp.listen(timeout: 3, port: 3000) do |request, response|
-
         # if we return a string, the server automatically
         # appends the string to the end of the response
       'Hello World!'
-
    end
 
      # We can also add an SSL version of the Hello World...
-     # We'll take a longer route:
 
-     # First, we'll create a hendler - an object that responds to #call(request, response)
+     # This time we'll create a hendler - an object that responds to #call(request, response)
    http_handler = Proc.new do |request, response|
-
+        # Setting cookies is easy.
+   response.cookies[:ssl_visited] = "Yap."
         # This time, we won't use short-cuts. We'll add are content traditionally:
       response << 'Hello SSL World!'
-
    end
-
 
      # We'll set up an SSL service using our new handler.
    GRHttp.listen port: 3030, ssl: true, http_handler: http_handler
-
 
      # Clear the GReactor's listener stack between examples
    GRHttp.on_shutdown { GRHttp.clear_listeners;  GRHttp.info 'Clear :-)'}
