@@ -74,13 +74,10 @@ GRHttp.start do
 
      # This time we'll create a hendler - an object that responds to #call(request, response)
    http_handler = Proc.new do |request, response|
-        # Setting cookies is easy.
       response.cookies[:ssl_visited] = "Yap."
-        # This time, we won't use short-cuts. We'll add are content traditionally:
       response << 'Hello SSL World!'
    end
 
-     # We'll set up an SSL service using our new handler.
    GRHttp.listen port: 3030, ssl: true, http_handler: http_handler
 
      # Clear the GReactor's listener stack between examples
@@ -98,22 +95,18 @@ We can also make this object oriented:
 ```ruby
 require 'grhttp'
 
-# in a real world example, this would probably
-# be your HTTP router object (can be class instance).
-
 module MyHandler
    def self.call request, response
+      return false if request.path == '/refuse'
       if request.protocol == 'https'
-           # it's easy to set (and read) cookies
          response.cookies[:ssl_visited] = true
-
            # there's even a temporary cookie stash (single use cookies)\*
          response.flash[:on_and_off] = true unless response.flash[:on_and_off]
-
          response << 'Hello SSL world!'
       else
          response << 'Hello Clear Text world!'
       end
+      true
    end
 end
 
