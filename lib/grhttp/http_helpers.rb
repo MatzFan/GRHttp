@@ -144,7 +144,7 @@ module GRHttp
 			unless request[:method]
 				request[:time_recieved] = Time.now
 				request[:method], request[:query], request[:version] = data.gets.split /[\s]+/
-				return io.close unless request[:method].match(HTTP_METHODS_REGEXP) && request[:query] && request[:version]				
+				return io.close && false unless request[:method].match(HTTP_METHODS_REGEXP) && request[:query] && request[:version]				
 			end
 			until request[:headers_complete] || data.eof?
 				header = data.gets
@@ -167,7 +167,7 @@ module GRHttp
 					# ad mid chunk logic here
 					if io[:length].to_i == 0
 						chunk = data.gets
-						return unless chunk
+						return false unless chunk
 						io[:length] = chunk.match.to_i(16)
 						io.close && raise("Unknown error parsing chunked data") unless io[:length]
 						request[:body_complete] = true && break if io[:length] == 0
@@ -175,7 +175,7 @@ module GRHttp
 						request[:body] ||= ''
 					end
 					chunk = data.read(io[:length] - io[:act_length])
-					return unless chunk
+					return false unless chunk
 					request[:body] << chunk
 					io[:act_length] += chunk.bytesize
 					(io[:act_length] = io[:length] = 0) && (data.gets) if io[:act_length] >= io[:length]
@@ -183,13 +183,13 @@ module GRHttp
 					puts 'len'
 					request[:body] ||= ''
 					packet = data.read(request['content-length'].to_i - request[:body].bytesize)
-					return unless packet
+					return false unless packet
 					request[:body] << packet
 					request[:body_complete] = true if request['content-length'].to_i - request[:body].bytesize <= 0
 				elsif request['content-type']
 					GR.warn 'Body type protocol error.' unless request[:body]
 					line = data.gets
-					return unless line
+					return false unless line
 					(request[:body] ||= '') << line
 					request[:body_complete] = true if line.match EOHEADERS
 				else

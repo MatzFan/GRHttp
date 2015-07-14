@@ -18,17 +18,19 @@ module GRHttp
 				data = StringIO.new io.read.to_s
 				until data.eof?
 					if HTTP._parse_http io, data
-							request = io[:request]; io[:request] = nil
-							response = HTTPResponse.new request
-							ret = ((request.upgrade? ? (WSHandler.is_valid_request?(request, response) ? io.params[:upgrade_handler] : false) : io.params[:http_handler]) || NO_HANDLER).call(request, response)
+						request = io[:request]; io[:request] = nil
+						response = HTTPResponse.new request
+						if request.upgrade?
+							WSHandler.http_handshake request, response, (io.params[:upgrade_handler] || NO_HANDLER).call(request, response) if WSHandler.is_valid_request?(request, response)
+						else
+							ret = (io.params[:http_handler] || NO_HANDLER).call(request, response)
 							if ret.is_a?(String) && !response.finished?
 								response << ret 
 							elsif ret == false
 								response.clear && (response.status = 404) && (response << HTTPResponse::STATUS_CODES[404])
-							elsif ret && request.upgrade?
-								WSHandler.http_handshake request, response, ret
 							end
 							response.try_finish
+						end
 					end
 				end
 			end
