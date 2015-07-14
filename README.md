@@ -64,7 +64,7 @@ GRHttp.start do
      # This time we'll create a hendler - an object that responds to #call(request, response)
    http_handler = Proc.new do |request, response|
         # Setting cookies is easy.
-   response.cookies[:ssl_visited] = "Yap."
+      response.cookies[:ssl_visited] = "Yap."
         # This time, we won't use short-cuts. We'll add are content traditionally:
       response << 'Hello SSL World!'
    end
