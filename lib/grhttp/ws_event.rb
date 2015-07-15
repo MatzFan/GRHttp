@@ -9,6 +9,7 @@ module GRHttp
 			@data = data
 		end
 
+		# Encodes data according to the websocket standard and sends the data over the websocket connection.
 		def write data
 			# should synchronize?
 			# @io.locker.synchronize { ... } 
@@ -16,22 +17,46 @@ module GRHttp
 		end
 		alias :send :write
 		alias :<< :write
+		# Closes the websocket connection.
 		def close
 			@io.send( CLOSE_FRAME )
 			@io.close
 		end
 		alias :disconnect :close
+		# @return [true, false] returns true if the websocket connection is closed.
+		def closed?
+			@io.closed?
+		end
+		# Sends a ping and returns he WSEvent object.
 		def ping
 			@io.send( PING_FRAME )
+			self
 		end
+		# Sends a pong and returns he WSEvent object.
 		def pong
 			@io.send( PONG_FRAME )
+			self
+		end
+
+		# Starts auto-pinging every set interval (in seconds), until the websocket closes - this cannot be stopped once started.
+		def autoping interval = 45
+			AUTOPING_PROC.call self, interval
+			true
+		end
+
+		# Starts auto-ponging every set interval (in seconds), until the websocket closes - this cannot be stopped once started.
+		def autopong interval = 45
+			AUTOPONG_PROC.call self, interval
+			true
 		end
 
 		protected
 		PONG_FRAME = "\x8A\x00".freeze
 		PING_FRAME = "\x89\x00".freeze
 		CLOSE_FRAME = "\x88\x00".freeze
+		AUTOPING_PROC = Proc.new {|ws, i| GReactor.run_every i, 1, ws.ping, i, &AUTOPING_PROC unless ws.closed?}
+		AUTOPONG_PROC = Proc.new {|ws, i| GReactor.run_every i, 1, ws.pong, i, &AUTOPONG_PROC unless ws.closed?}
+		PING_PROC = Proc.new {|res| EventMachine.timed_job ping_interval, 1, [res.ping], PING_PROC unless res.service.disconnected? || !ping_interval }
 	end
 end
 
