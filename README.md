@@ -140,7 +140,8 @@ module MyServer
     module_function
     def on_open e
         puts 'WebSocket Open!'
-        e << 'Hello!'        
+        e << 'Hello!'
+        e.autopong # sets auto-pinging, to keep alive
     end
     def on_message e
         e << e.data
