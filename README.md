@@ -1,10 +1,8 @@
-# GRHttp - A native Ruby generic HTTP and WebSocket server.
-
-Wait for it... - For now I just have the HTTP part finished... almost (the API design might change).
+# GRHttp - A native Ruby Generic HTTP and WebSocket server.
 
 This is a native Ruby HTTP and WebSocket multi-threaded server that uses the [GReactor](https://github.com/boazsegev/GReactor) library.
 
-This means it's all ruby, no C or Java code.
+This means it's all ruby, no C or Java code. The code is thread-safe and also supports GReactor's forking... although it might effect your code.
 
 ## Installation
 
@@ -34,72 +32,46 @@ Allow me to welcome the world famous 'Hello World'!
 
 ```ruby
 require 'grhttp'
-GRHttp.start {   GRHttp.listen {|request, response| 'Hello World!' }      }
+GRHttp.start {   GRHttp.listen { 'Hello World!' }      }
 exit # exit between examples, to clear the listening services.
 ```
 
 * [Test it at http://localhost:3000](http://localhost:3000).
 
-There's no reason to be hanging around while the server works...
+As you may have noticed, by returning a string, the server automatically appended the string to the end of the response. This might be limited, so there's a better way to do this.
+
+Also, we don't have to be hanging around while the server works... we can keep running tasks with the server in the background:
 
 ```ruby
 require 'grhttp'
 GRHttp.start
-GRHttp.listen(timeout: 3, port: 3000) {|request, response| 'Hello!' }
+GRHttp.listen(timeout: 3, port: 3000) do |request, response|
+   response.cookies[:name] = 'setting cookies is easy'
+   response << 'Hello!'
+end
 GRHttp.on_shutdown { GRHttp.clear_listeners;  GRHttp.info 'Clear :-)'}
-puts 'We can keep working...'
+
+puts "We can keep working... try opening a page, go on... I'll wait..."
+sleep 5
+
 puts 'We can even restart the server:'
 GRHttp.restart # restart doesn't invoke the shutdown callbacks.
-puts 'Press ^C to stop the service.'
+
+puts 'Now we'll hang, press ^C to stop the service.'
 GRHttp.join
 
 ```
 
-Ammm... This example was too quick to explain anything or show off all the bells and whistles, so, let's try again, this time - Bigger:
-
-```ruby
-require 'grhttp'
-
-  # GRHttp doesn't have a .start method, so it deffers to the GReactor library.
-  # This means we are actually calling GReactor.start which can accept a block and hang until it's done.
-GRHttp.start do
-     # GRHttp.listen creates a webservice and accepts an optional block that acts as the HTTP handler.
-   GRHttp.listen(timeout: 3, port: 3000) do |request, response|
-        # if we return a string, the server automatically
-        # appends the string to the end of the response
-      'Hello World!'
-   end
-
-     # We can also add an SSL version of the Hello World...
-
-     # This time we'll create a hendler - an object that responds to #call(request, response)
-   http_handler = Proc.new do |request, response|
-      response.cookies[:ssl_visited] = "Yap."
-      response << 'Hello SSL World!'
-   end
-
-   GRHttp.listen port: 3030, ssl: true, http_handler: http_handler
-
-     # Clear the GReactor's listener stack between examples
-   GRHttp.on_shutdown { GRHttp.clear_listeners;  GRHttp.info 'Clear :-)'}
-
-end
-
-```
-
-* [Test it at http://localhost:3000](http://localhost:3000).
-* [Test The SSL version at http://localhost:3030](http://localhost:3030).
-
-We can also make this object oriented:
+Ammm... This example was too quick to explain much or show off all the bells and whistles, so, let's try again, this time - Bigger, better, and... object oriented?
 
 ```ruby
 require 'grhttp'
 
 module MyHandler
    def self.call request, response
-      if request.protocol == 'https'
+      if request.protocol == 'https' # SSL?
          response.cookies[:ssl_visited] = true
-           # there's even a temporary cookie stash (single use cookies)\*
+           # there's even a temporary cookie stash (single use cookies)*
          response.flash[:on_and_off] = true unless response.flash[:on_and_off]
          response << 'Hello SSL world!'
       else
@@ -120,20 +92,19 @@ GRHttp.start do
 
 end
 
-# \* Google's Chrome might mess your flash cookie jar
-#    by requesting the `favicon.ico` while sending and setting cookies...
-#    It works as expected, but Chrome's refresh might be over-extensive.
+# * Google's Chrome might mess your flash cookie jar...
+#   It requests the `favicon.ico` while sending and setting cookies...
+#   GRHttp works as expected, but Chrome's refresh creates more cookie cycles.
 
 ```
-
-* [Test the `/refuse` path at http://localhost:3000/refuse](http://localhost:3000/refuse).
-
+* [Test it at http://localhost:3000](http://localhost:3000).
+* [Test The SSL version at http://localhost:3030](http://localhost:3030).
 
 ### Websocket services
 
-I'm still working on this one... but here's a teaser - A "Hello World!" variation with a WebSocket Echo Server
+WebSockets are also supported. Here's a "Hello World!" variation with a WebSocket Echo Server.
 
-We'll be using the same handler to handle regular HTTP requests, upgrade requests and WebSocket requests, all at once:
+We'll be using the same handler to handle regular HTTP requests, upgrade requests and WebSocket requests, all at once. This might better simulate an HTTP Router situation, which routes all types of requests to their corrects controller:
 
 ```ruby
 module MyServer
@@ -164,7 +135,8 @@ GRHttp.start do
 end
 ```
 
-Wait for it...
+* [Test the `/refuse` path at http://localhost:3000/refuse](http://localhost:3000/refuse).
+* [Test the wesocket echo server using http://websocket.org/echo.html](http://websocket.org/echo.html).
 
 ## Development
 
