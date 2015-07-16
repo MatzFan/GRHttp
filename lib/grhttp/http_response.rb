@@ -11,7 +11,7 @@ module GRHttp
 		attr_reader :headers
 		#the flash cookie-jar (single-use cookies, that survive only one request).
 		attr_reader :flash
-		#the response's body buffer container (an array). This object is removed once the , but can be replaces by any obect that supports `each` - `close` is NOT supported - call `close` as a callback block after `send` if you need to close the object).
+		#the response's body buffer container (an array). This object is removed once the headers are sent and all write operations hang after that point.
 		attr_reader :body
 		#bytes sent to the asynchronous que so far - excluding headers (only the body object).
 		attr_reader :bytes_sent

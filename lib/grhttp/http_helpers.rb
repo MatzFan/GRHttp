@@ -92,17 +92,7 @@ module GRHttp
 			end
 		end
 
-		protected
-
-		HTTP_METHODS = %w{GET HEAD POST PUT DELETE TRACE OPTIONS CONNECT PATCH}
-		HTTP_METHODS_REGEXP = /\A#{HTTP_METHODS.join('|')}/i
-		EOHEADERS = /^[\r]?\n/
-		HEADER_REGX = /^([^:]*):[\s]*([^\r\n]*)/
-		FULL_QUARY_REGEX = /(([a-z0-9A-Z]+):\/\/)?(([^\/\:]+))?(:([0-9]+))?([^\?\#]*)(\?([^\#]*))?/
-		REG_QUARY_REGEX = /([^\?\#]*)(\?([^\#]*))?/
-		PARAM_SPLIT_REGX = /[&;]/
-		HEADER_SPLIT_REGX = /[;,][\s]?/
-
+		# Adds paramaters to a Hash object, according to the GRHttp's server conventions.
 		def self.add_param_to_hash param_name, param_value, target_hash
 			begin
 				a = target_hash
@@ -115,6 +105,17 @@ module GRHttp
 				target_hash[param_name] = rubyfy! param_value
 			end
 		end
+
+		protected
+
+		HTTP_METHODS = %w{GET HEAD POST PUT DELETE TRACE OPTIONS CONNECT PATCH}
+		HTTP_METHODS_REGEXP = /\A#{HTTP_METHODS.join('|')}/i
+		EOHEADERS = /^[\r]?\n/
+		HEADER_REGX = /^([^:]*):[\s]*([^\r\n]*)/
+		FULL_QUARY_REGEX = /(([a-z0-9A-Z]+):\/\/)?(([^\/\:]+))?(:([0-9]+))?([^\?\#]*)(\?([^\#]*))?/
+		REG_QUARY_REGEX = /([^\?\#]*)(\?([^\#]*))?/
+		PARAM_SPLIT_REGX = /[&;]/
+		HEADER_SPLIT_REGX = /[;,][\s]?/
 
 		# extracts parameters from the query
 		def self.extract_data data, target_hash, decode = :form
