@@ -70,6 +70,10 @@ module GRHttp
 			self[:requested_protocol]
 		end
 
+		def ssl?
+			io.ssl? || self[:requested_protocol] == 'https' || self[:requested_protocol] == 'wss'
+		end
+
 		# the io used for the request.
 		def io
 			self[:io]			

@@ -11,25 +11,33 @@ require "grhttp"
 
 module MyServer
     module_function
-    def on_open e
-        puts 'WebSocket Open!'
-        e << 'Hello!'        
-    end
-    def on_message e
-        e << e.data
-       e.broadcast e.data
-   end
-    def on_close e
-        puts 'WebSocket Closed!'
-    end
     def call request, response
-      # return false if request.path == '/refuse'
-      response << request.to_json #'Hello my World!'#  request.to_s
+      return false if request.path == '/refuse'
+      response << 'Hello my World!'#  request.to_s
       true
     end
-    def on_broadcast e
-        e << e.data
+    def on_open ws
+      @first ||= ws.uuid
+      ws.autopong 40
+      ws << "System: Hello!"
+
+      if ws.uuid == @first
+        ws << "System: You're the first one here, so you get special notifications :-)"
+      else
+        ws.unicast @first, "System: Someone just joind the chat"
+      end
+    end
+    def on_message ws
+      ws << "You: #{ws.data}"
+      ws.broadcast "Someone: #{ws.data}"
+    end
+    def on_broadcast ws
+        ws << ws.data
         true
+    end
+    def on_close ws
+      puts 'WebSocket Closed!'
+      ws.unicast @first, "System: Someone just left the chat"
     end
 end
 

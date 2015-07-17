@@ -205,7 +205,7 @@ module GRHttp
 			request[:client_ip] = request['x-forwarded-for'].to_s.split(/,[\s]?/)[0] || (request[:io].io.remote_address.ip_address) rescue 'unknown IP'
 			request[:version] = request[:version].match(/[\d\.]+/)[0]
 
-			request[:requested_protocol] = request['x-forwarded-proto'] || ( request[:io].ssl? ? 'https' : 'http')
+			request[:requested_protocol] = request['x-forwarded-proto'] ? request['x-forwarded-proto'].downcase : ( request[:io].ssl? ? 'https' : 'http')
 			tmp = request['host'] ? request['host'].split(':') : []
 			request[:host_name] = tmp[0]
 			request[:port] = tmp[1] || nil

@@ -121,9 +121,14 @@ module GRHttp
 				CLOSE_FRAME
 			end
 
-			# Broadcasts data to ALL the websocket connections EXCEPT the once specified.
+			# Broadcasts data to ALL the websocket connections EXCEPT the once specified (if specified).
+			#
+			# Data broadcasted will be recived by the websocket handler it's #on_broadcast(ws) method (if exists).
 			#
 			# Accepts:
+			#
+			# data:: One object of data. Usually a Hash, Array, String or a JSON formatted object.
+			# ignore_io (optional):: The IO to be ignored by the broadcast. Usually the broadcaster's IO.
 			# 
 			def broadcast data, ignore_io = nil
 				if ignore_io
@@ -132,6 +137,17 @@ module GRHttp
 				else
 					GReactor.each {|io| h = io[:websocket_handler]; h.on_broadcast WSEvent.new(io, data) if h && h.respond_to?(:on_broadcast)}
 				end
+				true
+			end
+
+			# Unicast data to a specific websocket connection (ONLY the connection specified).
+			#
+			# Data broadcasted will be recived by the websocket handler it's #on_broadcast(ws) method (if exists).
+			# Accepts:
+			# 
+			def unicast uuid, data
+				return false unless uuid
+				GReactor.each {|io| next unless io[:uuid] == uuid; h = io[:websocket_handler]; h.on_broadcast WSEvent.new(io, data) if h && h.respond_to?(:on_broadcast); break}
 				true
 			end
 

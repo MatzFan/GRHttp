@@ -2,7 +2,7 @@
 
 This is a native Ruby HTTP and WebSocket multi-threaded server that uses the [GReactor](https://github.com/boazsegev/GReactor) library.
 
-This means it's all ruby, no C or Java code. The code is thread-safe and also supports GReactor's forking... although it might effect your code.
+This means it's all ruby, no C or Java code. The code is thread-safe and also supports GReactor's forking... although it might effect your code (especially with regards to websocket broadcasting).
 
 ## Installation
 
@@ -47,6 +47,7 @@ require 'grhttp'
 GRHttp.start
 GRHttp.listen(timeout: 3, port: 3000) do |request, response|
    response.cookies[:name] = 'setting cookies is easy'
+   response.flash[Time.now.to_s] = 'this cookie will autodistruct on the next visit'
    response << 'Hello!'
 end
 GRHttp.on_shutdown { GRHttp.clear_listeners;  GRHttp.info 'Clear :-)'}
@@ -62,39 +63,11 @@ GRHttp.join
 
 ```
 
-Ammm... This example was too quick to explain much or show off all the bells and whistles, so, let's try again, this time - Bigger, better, and... object oriented?
+Ammm... This example was too quick to explain much or show off all the bells and whistles, so, let's try again, this time - Bigger, better, and... websockets, anyone?
 
-```ruby
-require 'grhttp'
-
-module MyHandler
-   def self.call request, response
-      if request.protocol == 'https' # SSL?
-         response.cookies[:ssl_visited] = true
-           # there's even a temporary cookie stash (single use cookies)*
-         response.flash[:on_and_off] = true unless response.flash[:on_and_off]
-         response << 'Hello SSL world!'
-      else
-         response << 'Hello Clear Text world!'
-      end
-      return false if request.path == '/refuse'
-      true
-   end
-end
-
-GRHttp.start do
-
-   GRHttp.listen port: 3000, http_handler: MyHandler
-   GRHttp.listen port: 3030, http_handler: MyHandler, ssl: true
-
-     # Clear the GReactor's listener stack between examples
-   GRHttp.on_shutdown { GRHttp.clear_listeners;  GRHttp.info 'Clear :-)'}
-
-end
-
-# * Google's Chrome might mess your flash cookie jar...
-#   It requests the `favicon.ico` while sending and setting cookies...
-#   GRHttp works as expected, but Chrome's refresh creates more cookie cycles.
+# * Using page a refresh might mess your flash cookie jar...
+#   i.e. Chrome requests the `favicon.ico` while sending and setting cookies during refresh...
+#   GRHttp works as expected, but Chrome's refresh creates an extra cookie cycles.
 
 ```
 * [Test it at http://localhost:3000](http://localhost:3000).
@@ -102,36 +75,62 @@ end
 
 ### Websocket services
 
-WebSockets are also supported. Here's a "Hello World!" variation with a WebSocket Echo Server.
+WebSockets are also supported. Here's a "Hello World!" variation with a WebSocket Echo Server that both Boradcasts and Unicasts data to different websockets (semi-chatroom).
 
-We'll be using the same handler to handle regular HTTP requests, upgrade requests and WebSocket requests, all at once. This might better simulate an HTTP Router situation, which routes all types of requests to their corrects controller:
+We'll be using the same handler to handle regular HTTP requests, upgrade requests and WebSocket requests, all at once. This might better simulate an HTTP Router situation, which routes all types of requests to their corrects controller (or controller class):
 
 ```ruby
 module MyServer
     module_function
-    def on_open e
-        puts 'WebSocket Open!'
-        e << 'Hello!'
-        e.autopong # sets auto-pinging, to keep alive
-    end
-    def on_message e
-        e << e.data
-    end
-    def on_close e
-        puts 'WebSocket Closed!'
-    end
+
+    # handles HTTP
+
     def call request, response
-      if request.upgrade?
+      if request.upgrade? # upgrade to websockets?
         return false if request.path == '/refuse'
         return self
       end
       return false if request.path == '/refuse'
-      response << "Hello World!\r\n\r\nThe Request:\r\n#{request.to_s}"
+      response << "Hello #{'SSL ' if request.ssl?}World!\r\n\r\n"
+      response << "To check the websocket server use: http://www.websocket.org/echo.html\r\n\r\n"
+      response << "The Request:\r\n#{request.to_s}"
+    end
+
+    # handles WebSockets
+
+    def on_open ws
+      puts 'WebSocket Open!'
+      ws << 'System: Welcome!'
+      ws.autopong # sets auto-pinging, to keep alive
+
+      @first ||= ws.uuid # save the first connection's uuid.
+      if ws.uuid == @first
+        ws << "System: You're the first one here, so you get special notifications :-)"
+      else
+        ws.unicast @first, "JOINED: Someone just joined the chat."
+      end
+    end
+    def on_message ws
+      ws << "You: #{ws.data}"
+      ws.broadcast "Someone: #{ws.data}"
+    end
+
+    def on_broadcast ws
+      ws << ws.data
+      true
+    end
+
+    def on_close ws
+      ws.unicast @first, "LEFT: Someone just left the chat."
+      puts 'WebSocket Closed!'
     end
 end
 
 GRHttp.start do
     GRHttp.listen upgrade_handler: MyServer, http_handler: MyServer
+    GRHttp.listen port: 3030, ssl: true, upgrade_handler: MyServer, http_handler: MyServer
+    GRHttp.on_shutdown { GRHttp.clear_listeners;  GRHttp.info 'Clear :-)'}
+    GRHttp.on_shutdown { puts 'Shutdown and cleanup complete.'}
 end
 ```
 

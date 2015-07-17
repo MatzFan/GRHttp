@@ -2,11 +2,20 @@ require 'stringio'
 module GRHttp
 
 	class WSEvent
-		attr_reader :io, :data
+		# the IO wrapper object used internally to send data. It's available for you mainly so that you could set data in the IO object's cache.
+		attr_reader :io
+		# The websocket's event data.
+		attr_reader :data
 
+		# The initializer is called by the GRHttp server, setting the websocket's event data and the IO used for sending websocket data.
 		def initialize io, data = nil
 			@io = io
 			@data = data
+		end
+
+		# Returns the websocket connection's UUID, used for unicasting.
+		def uuid
+			io[:uuid] ||= SecureRandom.uuid
 		end
 
 		# Encodes data according to the websocket standard and sends the data over the websocket connection.
@@ -23,9 +32,9 @@ module GRHttp
 			@io.close
 		end
 		alias :disconnect :close
-		# @return [true, false] returns true if the websocket connection is closed.
+		# @return [true, false] returns true if the websocket connection is closed in both directions (calles the socket.closed? method).
 		def closed?
-			@io.closed?
+			@io.io.closed?
 		end
 		# Sends a ping and returns he WSEvent object.
 		def ping
@@ -38,8 +47,29 @@ module GRHttp
 			self
 		end
 
+		# Broadcasts data to ALL websocket connections sharing the same process EXCEPT this websocket connection.
+		#
+		# Accepts only ONE data object - usually a Hash, Array, String or a JSON formatted object.
+		#
+		# It is better to broadcast only data that would fit in a JSON string, as to allow easier multi-process / multi-machine scaling.
+		#
+		# For inter-process broadcasts/unicasts, use this method in conjuncture with a Pub/Sub service such as Redis.
 		def broadcast data
 			Base::WSHandler.broadcast data, self.io
+		end
+
+		# Broadcasts data to ONE websocket connection sharing the same process, as indicated by it's UUID.
+		#
+		# Accepts:
+		#
+		# data:: ONE data object - usually a Hash, Array, String or a JSON formatted object.
+		# uuid:: the websocket reciever's UUID.
+		#
+		# It is better to broadcast only data that would fit in a JSON string, as to allow easier multi-process / multi-machine scaling.
+		#
+		# For inter-process broadcasts/unicasts, use this method in conjuncture with a Pub/Sub service such as Redis.
+		def unicast data, uuid
+			Base::WSHandler.unicast data, uuid
 		end
 
 		# Starts auto-pinging every set interval (in seconds), until the websocket closes - this cannot be stopped once started.
