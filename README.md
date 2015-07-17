@@ -44,13 +44,16 @@ Also, we don't have to be hanging around while the server works... we can keep r
 
 ```ruby
 require 'grhttp'
+
 GRHttp.start
+
 GRHttp.listen(timeout: 3, port: 3000) do |request, response|
    response.cookies[:name] = 'setting cookies is easy'
-   response.flash[Time.now.to_s] = 'this cookie will autodistruct on the next visit'
+   response.flash[Time.now.to_s] = 'this cookie will selfdestruct on your next visit.'
    response << 'Hello!'
 end
-GRHttp.on_shutdown { GRHttp.clear_listeners;  GRHttp.info 'Clear :-)'}
+
+GRHttp.on_shutdown { GRHttp.clear_listeners; }
 
 puts "We can keep working... try opening a page, go on... I'll wait..."
 sleep 5
@@ -63,15 +66,10 @@ GRHttp.join
 
 ```
 
-Ammm... This example was too quick to explain much or show off all the bells and whistles, so, let's try again, this time - Bigger, better, and... websockets, anyone?
-
-# * Using page a refresh might mess your flash cookie jar...
-#   i.e. Chrome requests the `favicon.ico` while sending and setting cookies during refresh...
-#   GRHttp works as expected, but Chrome's refresh creates an extra cookie cycles.
-
-```
 * [Test it at http://localhost:3000](http://localhost:3000).
 * [Test The SSL version at http://localhost:3030](http://localhost:3030).
+
+Ammm... This example was too quick to explain much or show off all the bells and whistles, so, let's try again, this time - Bigger, better, and... websockets, anyone?
 
 ### Websocket services
 
