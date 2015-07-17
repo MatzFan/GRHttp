@@ -38,6 +38,10 @@ module GRHttp
 			self
 		end
 
+		def broadcast data
+			Base::WSHandler.broadcast data, self.io
+		end
+
 		# Starts auto-pinging every set interval (in seconds), until the websocket closes - this cannot be stopped once started.
 		def autoping interval = 45
 			AUTOPING_PROC.call self, interval

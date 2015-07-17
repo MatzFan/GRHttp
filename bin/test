@@ -17,7 +17,8 @@ module MyServer
     end
     def on_message e
         e << e.data
-    end
+       e.broadcast e.data
+   end
     def on_close e
         puts 'WebSocket Closed!'
     end
@@ -25,6 +26,10 @@ module MyServer
       # return false if request.path == '/refuse'
       response << request.to_json #'Hello my World!'#  request.to_s
       true
+    end
+    def on_broadcast e
+        e << e.data
+        true
     end
 end
 

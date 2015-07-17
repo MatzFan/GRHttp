@@ -121,6 +121,20 @@ module GRHttp
 				CLOSE_FRAME
 			end
 
+			# Broadcasts data to ALL the websocket connections EXCEPT the once specified.
+			#
+			# Accepts:
+			# 
+			def broadcast data, ignore_io = nil
+				if ignore_io
+					ig_id = ignore_io.object_id
+					GReactor.each {|io| h = io[:websocket_handler]; h.on_broadcast WSEvent.new(io, data) if h && io.object_id != ig_id && h.respond_to?(:on_broadcast)}
+				else
+					GReactor.each {|io| h = io[:websocket_handler]; h.on_broadcast WSEvent.new(io, data) if h && h.respond_to?(:on_broadcast)}
+				end
+				true
+			end
+
 			protected
 			FRAME_SIZE_LIMIT = 131_072
 			SUPPORTED_EXTENTIONS = {}
