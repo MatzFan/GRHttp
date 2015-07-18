@@ -13,6 +13,17 @@ module MyServer
     module_function
     def call request, response
       return false if request.path == '/refuse'
+      if request.path == '/stream'
+        response.stream_async do
+          sleep 1
+          response << "Hello Streaming\r\n"
+          response.stream_async do
+              sleep 1
+              response << "Goodbye Streaming"
+          end
+        end
+        return true
+      end
       response << 'Hello my World!'#  request.to_s
       true
     end
