@@ -20,6 +20,7 @@ module GRHttp
 					if HTTP._parse_http io, data
 						request = io[:request]; io[:request] = nil
 						response = HTTPResponse.new request
+						break if io.io.closed?
 						if request.upgrade?
 							WSHandler.http_handshake request, response, (io.params[:upgrade_handler] || NO_HANDLER).call(request, response) if WSHandler.is_valid_request?(request, response)
 						else

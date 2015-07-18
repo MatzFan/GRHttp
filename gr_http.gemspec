@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
 
   spec.summary       = %q{A native Ruby generic HTTP and WebSocket server (uses the GReactor library).}
   spec.description   = %q{A native Ruby generic HTTP and WebSocket server (uses the GReactor library).}
-  spec.homepage      = "https://github.com/boazsegev/HTTP-WS-GR/"
+  spec.homepage      = "https://github.com/boazsegev/GRHttp"
   spec.license       = "MIT"
 
   # Prevent pushing this gem to RubyGems.org by setting 'allowed_push_host', or

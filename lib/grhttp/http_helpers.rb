@@ -145,7 +145,7 @@ module GRHttp
 			unless request[:method]
 				request[:time_recieved] = Time.now
 				request[:method], request[:query], request[:version] = data.gets.split /[\s]+/
-				return io.close && false unless request[:method].match(HTTP_METHODS_REGEXP) && request[:query] && request[:version]				
+				return (data.pos = data.length) && io.close && false unless request[:method].match(HTTP_METHODS_REGEXP) && request[:query] && request[:version]				
 			end
 			until request[:headers_complete] || data.eof?
 				header = data.gets
@@ -154,10 +154,14 @@ module GRHttp
 					request[:headers_complete] = true
 				else
 					m = header.split /\:[\s]*/ , 2
-					if m[0].downcase == 'cookie'
+					m[0].downcase! if m[0]
+					if m[0] == 'cookie'
+						HTTP.extract_data m[1].split(HEADER_SPLIT_REGX), request.cookies, :uri
+					elsif m[0] == 'set-cookie'
+						m[1] = m[1].split(';')[0]
 						HTTP.extract_data m[1].split(HEADER_SPLIT_REGX), request.cookies, :uri
 					elsif m[1]
-						HTTP.make_utf8!(m[0]).downcase!
+						HTTP.make_utf8!(m[0])
 						HTTP.make_utf8!(m[1].rstrip! || m[1])
 						request[ m[0] ] ? (request[ m[0] ] << ", #{m[1]}") : (request[ m[0] ] = m[1])
 					end
@@ -202,16 +206,16 @@ module GRHttp
 		end
 
 		# read the body's data and parse any incoming data.
-		def self._finialize_request request
+		def self._finialize_request request			
 			request[:client_ip] = request['x-forwarded-for'].to_s.split(/,[\s]?/)[0] || (request[:io].io.remote_address.ip_address) rescue 'unknown IP'
-			request[:version] = request[:version].to_s.match(/[\d\.]+/)[0]
+			request[:version] = (request[:version] || '1.1').to_s.match(/[\d\.]+/)[0]
 
 			request[:requested_protocol] = request['x-forwarded-proto'] ? request['x-forwarded-proto'].downcase : ( request[:io].ssl? ? 'https' : 'http')
 			tmp = request['host'] ? request['host'].split(':') : []
 			request[:host_name] = tmp[0]
 			request[:port] = tmp[1] || nil
 
-			tmp = request[:query].split '?', 2
+			tmp = request[:query].split('?', 2)
 			request[:path] = tmp[0].chomp('/')
 			request[:original_path] = tmp[0].freeze
 			request[:quary_params] = tmp[1]

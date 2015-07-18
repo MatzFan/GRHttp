@@ -134,9 +134,9 @@ module GRHttp
 			def broadcast data, ignore_io = nil
 				if ignore_io
 					ig_id = ignore_io.object_id
-					GReactor.each {|io| h = io[:websocket_handler]; h.on_broadcast WSEvent.new(io, data) if h && io.object_id != ig_id && h.respond_to?(:on_broadcast)}
+					GReactor.each {|io| GReactor.queue [io, data], DO_BROADCAST_PROC unless io.object_id == ig_id}
 				else
-					GReactor.each {|io| h = io[:websocket_handler]; h.on_broadcast WSEvent.new(io, data) if h && h.respond_to?(:on_broadcast)}
+					GReactor.each {|io| GReactor.queue [io, data], DO_BROADCAST_PROC }
 				end
 				true
 			end
@@ -145,11 +145,14 @@ module GRHttp
 			#
 			# Data broadcasted will be recived by the websocket handler it's #on_broadcast(ws) method (if exists).
 			# Accepts:
-			# 
+			# uuid:: the UUID of the websocket connection recipient.
+			# data:: the data to be sent.
+			#
+			# @returns [true, false] Returns true if the object was found and the unicast was sent (the task will be executed asynchronously once the unicast was sent).
 			def unicast uuid, data
-				return false unless uuid
-				GReactor.each {|io| next unless io[:uuid] == uuid; h = io[:websocket_handler]; h.on_broadcast WSEvent.new(io, data) if h && h.respond_to?(:on_broadcast); break}
-				true
+				return false unless uuid && data
+				GReactor.each {|io| next unless io[:uuid] == uuid; GReactor.queue [io, data], DO_BROADCAST_PROC; return true}
+				false
 			end
 
 			protected
@@ -157,6 +160,7 @@ module GRHttp
 			SUPPORTED_EXTENTIONS = {}
 			CLOSE_FRAME = "\x88\x00".freeze
 			message_size_limit = 0
+			DO_BROADCAST_PROC = Proc.new {|io, data|  h = io[:websocket_handler]; h.on_broadcast WSEvent.new(io, data) if h && h.respond_to?(:on_broadcast)}
 
 			def self.refuse response
 				response.status = 400
@@ -280,19 +284,6 @@ module GRHttp
 		end
 	end
 
-	# Sets the message byte size limit for a Websocket message. Defaults to 0 (no limit)
-	#
-	# Although memory will be allocated for the latest TCP/IP frame,
-	# this allows the websocket to disconnect if the incoming expected message size exceeds the allowed maximum size.
-	#
-	# If the sessage size limit is exceeded, the disconnection will be immidiate as an attack will be assumed. The protocol's normal disconnect sequesnce will be discarded.
-	def self.ws_message_size_limit=val
-		Base::WSHandler.message_size_limit = val
-	end
-	# Gets the message byte size limit for a Websocket message. Defaults to 0 (no limit)
-	def self.ws_message_size_limit
-		Base::WSHandler.message_size_limit
-	end
 end
 
 

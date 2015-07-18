@@ -15,6 +15,7 @@ require "grhttp/http_cookies"
 
 require "grhttp/ws_handler"
 require "grhttp/ws_event"
+require "grhttp/ws_client"
 
 require "grhttp/http_request"
 require "grhttp/http_response"

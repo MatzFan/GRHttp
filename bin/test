@@ -56,8 +56,8 @@ upgrade_handler = Proc.new {|i, o| MyServer unless i.path == '/refuse'}
 
 # GR.set_forking 4
 
-GRHttp.start do
-    GRHttp.listen upgrade_handler: upgrade_handler, http_handler: MyServer
-end
+# GRHttp.start do
+#     GRHttp.listen upgrade_handler: upgrade_handler, http_handler: MyServer
+# end
 
-# GRHttp.start {   GRHttp.listen {|request, response| 'Hello World!' }      }
+GRHttp.start {   GRHttp.listen {|request, response| 'Hello World!' }      }
