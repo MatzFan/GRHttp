@@ -169,7 +169,6 @@ module GRHttp
 			end
 			while request[:headers_complete] && !request[:body_complete]
 				if request['transfer-coding'] == 'chunked'
-					puts 'chunk'
 					# ad mid chunk logic here
 					if io[:length].to_i == 0
 						chunk = data.gets
@@ -186,7 +185,6 @@ module GRHttp
 					io[:act_length] += chunk.bytesize
 					(io[:act_length] = io[:length] = 0) && (data.gets) if io[:act_length] >= io[:length]
 				elsif request['content-length'] && request['content-length'].to_i != 0
-					puts 'len'
 					request[:body] ||= ''
 					packet = data.read(request['content-length'].to_i - request[:body].bytesize)
 					return false unless packet
