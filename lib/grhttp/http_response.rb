@@ -61,6 +61,34 @@ module GRHttp
 			@finished = true
 		end
 
+		# Creates a streaming block. Once all streaming blocks are done, the response will automatically finish.
+		#
+		# This avoids manualy handling {#start_streaming}, {#finish_streaming} and asynchronously tasking.
+		#
+		# Every time data is sent the timout is reset. Responses longer than timeout will not be sent (but they will be processed). 
+		#
+		# Accepts a required block. i.e.
+		#
+		#     response.stream_async {sleep 1; response << "Hello Streaming"}
+		#     # OR, you can chain the streaming calls
+		#     response.stream_async do
+		#       sleep 1
+		#       response << "Hello Streaming"
+		#       response.stream_async do
+		#           sleep 1
+		#           response << "Goodbye Streaming"
+		#       end
+		#     end
+		#
+		# @returns [true, exception] The method returns immidiatly with a value of true unless it is impossible to stream the response (an exception will be raised) or a block wasn't supplied.
+		def stream_async &block
+			raise "Block required." unless block
+			start_streaming unless @finished
+			@io[:http_sblocks_count] += 1
+			@stream_proc ||= Proc.new { |block| raise "IO closed. Streaming failed." if io.io.closed?; block.call; io[:http_sblocks_count] -= 1; finish_streaming }
+			GReactor.queue [block], @stream_proc
+		end
+
 		# Returns a writable combined hash of the request's cookies and the response cookie values.
 		#
 		# Any cookies writen to this hash (`response.cookies[:name] = value` will be set using default values).
@@ -74,7 +102,7 @@ module GRHttp
 		#
 		# If the headers were already sent, this will also send the data and hang until the data was sent.
 		def << str
-			@body ? @body.push(str) : (request.head? ? send_body(str) : false)
+			@body ? @body.push(str) : (request.head? ? false :  send_body(str))
 			self
 			# send if streaming?
 		end
@@ -154,11 +182,9 @@ module GRHttp
 		def send(str = nil)
 			raise 'HTTPResponse IO MISSING: cannot send http response without an io.' unless @io
 			@body << str if @body && str
-			send_headers
+			return if send_headers
 			return if request.head?
-			return send_body(str) if @body.nil?
-			send_body @body.is_a?(String) ? @body : @body.join
-			@body = nil
+			send_body(str)
 			self
 		end
 
@@ -169,8 +195,7 @@ module GRHttp
 			self.send
 			@io.send "0\r\n\r\n" if @chunked
 			@finished = true
-			# io.disconnect unless headers['keep-alive']
-			# log
+			# io.close unless io[:keep_alive]
 			GReactor.log_raw "#{@request[:client_ip]} [#{Time.now.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:requested_protocol]}\/#{@request[:version]}\" #{@status} #{bytes_sent.to_s} #{"%i" % ((Time.now - @request[:time_recieved])*1000)}ms\n" # %0.3f
 		end
 
@@ -267,6 +292,7 @@ module GRHttp
 			out << "#{@http_version} #{@status} #{STATUS_CODES[@status] || 'unknown'}\r\nDate: #{Time.now.httpdate}\r\n"
 
 			unless headers['connection']
+				io[:keep_alive] = true
 				out << "Connection: Keep-Alive\r\nKeep-Alive: timeout=5\r\n"
 			end
 
@@ -279,12 +305,18 @@ module GRHttp
 			headers.each {|k,v| out << "#{k.to_s}: #{v}\r\n"}
 			@cookies.each {|k,v| out << "Set-Cookie: #{k.to_s}=#{v.to_s}\r\n"}
 			out << "\r\n"
-			@headers.freeze
+
+			@body = @body.join if @body && @body.is_a?(Array)
+			@body = nil if @body.empty?
 			io.send out
+			send_body @body unless request.head?
+			@body = nil
+			@headers.freeze
 		end
 
 		# sends the body or part thereof
 		def send_body data
+			return nil unless data
 			if @chunked
 				@io.send "#{data.bytesize.to_s(16)}\r\n#{data}\r\n"
 				@bytes_sent += data.bytesize
@@ -295,6 +327,30 @@ module GRHttp
 
 		end
 
+		# Sets the http streaming flag and sends the responses headers, so that the response could be handled asynchronously.
+		#
+		# if this flag is not set, the response will try to automatically finish its job
+		# (send its data and maybe close the connection).
+		#
+		# NOTICE! :: If HTTP streaming is set, you will need to manually call `response.finish_streaming`
+		# or the connection will not close properly.
+		def start_streaming
+			raise "Cannot start streaming after headers were sent!" if headers_sent?
+			@finished = @chunked = true
+			headers['connection'] = 'Close'
+			@io[:http_sblocks_count] ||= 0
+			send nil
+		end
+
+		# Sends the complete response signal for a streaming response.
+		#
+		# Careful - sending the completed response signal more than once might case disruption to the HTTP connection.
+		def finish_streaming
+			return unless @io[:http_sblocks_count] == 0
+			@finished = false
+			finish
+			@io.close
+		end
 	end
 
 end
@@ -302,8 +358,8 @@ end
 ######
 ## example requests
 
-# GET / HTTP/1.1
-# Host: localhost:2000
+# GET /stream HTTP/1.1
+# Host: localhost:3000
 # Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
 # Cookie: user_token=2INa32_vDgx8Aa1qe43oILELpSdIe9xwmT8GTWjkS-w
 # User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10) AppleWebKit/600.1.25 (KHTML, like Gecko) Version/8.0 Safari/600.1.25
