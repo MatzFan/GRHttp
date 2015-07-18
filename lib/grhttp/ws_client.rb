@@ -30,6 +30,7 @@ module GRHttp
 				@on_open = block if block
 				return @on_open
 			end
+			@response = ws
 			instance_exec( ws, &@on_open) if @on_open
 		end
 
@@ -44,6 +45,11 @@ module GRHttp
 		# sends data through the socket. a shortcut for ws_client.response <<
 		def << data
 			@response << data
+		end
+
+		# closes the connection, if open
+		def close
+			@response.close if @response
 		end
 
 		# Create a simple Websocket Client(!)
@@ -134,7 +140,7 @@ module GRHttp
 			(io[:websocket_handler] = WSClient.new io[:request]).on_open(WSEvent.new(io, nil))
 			# add the socket to the EventMachine IO reactor
 			GReactor.add_raw_io_to_stack io.io, io
-			io[:websocket_handler]
+			return io[:websocket_handler]
 			rescue => e
 				socket.close if socket
 				raise e
