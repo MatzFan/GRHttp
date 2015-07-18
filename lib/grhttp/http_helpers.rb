@@ -149,6 +149,7 @@ module GRHttp
 			end
 			until request[:headers_complete] || data.eof?
 				header = data.gets
+				next unless header
 				if header.match EOHEADERS
 					request[:headers_complete] = true
 				else
@@ -162,7 +163,7 @@ module GRHttp
 					end
 				end
 			end
-			until request[:body_complete]
+			while request[:headers_complete] && !request[:body_complete]
 				if request['transfer-coding'] == 'chunked'
 					puts 'chunk'
 					# ad mid chunk logic here
@@ -203,7 +204,7 @@ module GRHttp
 		# read the body's data and parse any incoming data.
 		def self._finialize_request request
 			request[:client_ip] = request['x-forwarded-for'].to_s.split(/,[\s]?/)[0] || (request[:io].io.remote_address.ip_address) rescue 'unknown IP'
-			request[:version] = request[:version].match(/[\d\.]+/)[0]
+			request[:version] = request[:version].to_s.match(/[\d\.]+/)[0]
 
 			request[:requested_protocol] = request['x-forwarded-proto'] ? request['x-forwarded-proto'].downcase : ( request[:io].ssl? ? 'https' : 'http')
 			tmp = request['host'] ? request['host'].split(':') : []
