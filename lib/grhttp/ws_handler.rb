@@ -43,6 +43,7 @@ module GRHttp
 				# http://www.rubydoc.info/github/imanel/websocket-ruby
 				return refuse response unless handler
 				io = request[:io]
+				io[:keep_alive] = true
 				response.status = 101
 				response['upgrade'] = 'websocket'
 				response['content-length'] = '0'
