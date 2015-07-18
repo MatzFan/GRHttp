@@ -47,7 +47,10 @@ module GRHttp
 			self
 		end
 
-		# Broadcasts data to ALL websocket connections sharing the same process EXCEPT this websocket connection.
+		# Broadcasts data to ALL websocket connection _Handlers_ sharing the same process EXCEPT this websocket connection.
+		#
+		# A handler must implement the `#on_broadcast(data)` to accept broadcasts and unicasts.
+		# The broadcast / unicast will be sent to the **handler** but NOT to the **client**.
 		#
 		# Accepts only ONE data object - usually a Hash, Array, String or a JSON formatted object.
 		#
@@ -59,6 +62,9 @@ module GRHttp
 		end
 
 		# Broadcasts data to ONE websocket connection sharing the same process, as indicated by it's UUID.
+		#
+		# A handler must implement the `#on_broadcast(data)` to accept broadcasts and unicasts.
+		# The broadcast / unicast will be sent to the **handler** but NOT to the **client**.
 		#
 		# Accepts:
 		#
