@@ -1,4 +1,5 @@
 # GRHttp - A native Ruby Generic HTTP and WebSocket server.
+[![Inline docs](http://inch-ci.org/github/boazsegev/GRHttp.svg?branch=master)](http://www.rubydoc.info/gems/grhttp)
 
 This is a native Ruby HTTP and WebSocket multi-threaded server that uses the [GReactor](https://github.com/boazsegev/GReactor) library.
 
