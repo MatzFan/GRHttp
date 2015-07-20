@@ -16,10 +16,10 @@ module GRHttp
 
 		# Escapes html. based on the WEBRick source code, escapes &, ", > and < in a String object
 		def self.escape(string)
-			string.gsub(/&/n, '&amp;')
-			.gsub(/\"/n, '&quot;')
-			.gsub(/>/n, '&gt;')
-			.gsub(/</n, '&lt;')
+			string.gsub('&', '&amp;')
+			.gsub('"', '&quot;')
+			.gsub('>', '&gt;')
+			.gsub('<', '&lt;')
 		end
 		
 		# Decodes data from :form, :html and :url (default) escaped strings.
