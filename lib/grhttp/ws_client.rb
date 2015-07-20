@@ -135,7 +135,6 @@ module GRHttp
 			HTTP._parse_http io, reply
 
 			# set-up handler response object. 
-			io[:ws_parser] = {body: [], stage: 0, step: 0, message: ''}
 			io[:ws_extentions] = [].freeze
 			(io[:websocket_handler] = WSClient.new io[:request]).on_open(WSEvent.new(io, nil))
 			# add the socket to the EventMachine IO reactor

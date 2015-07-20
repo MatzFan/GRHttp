@@ -22,7 +22,8 @@ module GRHttp
 		def write data
 			# should synchronize?
 			# @io.locker.synchronize { ... } 
-			@io.send Base::WSHandler.frame_data(@io, data.to_s) if data
+			Base::WSHandler.send_data @io, data.to_s
+			# @io.send Base::WSHandler.frame_data(@io, data.to_s) if data
 		end
 		alias :send :write
 		alias :<< :write
