@@ -25,7 +25,7 @@ Or install it yourself as:
 
 GRHttp allows you to write a quick web service based of the [GReactor](https://github.com/boazsegev/GReactor) library - So you get Asynchronous events, timed event and a Server (or servers) - all in a native Ruby package.
 
-You can use GRHttp for both HTTP and Websocket services.
+You can use GRHttp for both HTTP and Websocket services and even write a full blown framework, such as the [Plezi HTTP and Websocket WebApp Framework](https://github.com/boazsegev/plezi) that uses GRHttp as it's server of choice.
 
 ### HTTP Server
 
