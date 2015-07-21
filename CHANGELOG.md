@@ -2,6 +2,12 @@
 
 ***
 
+Change log v.0.0.11
+
+**Fix**: Fixed an issue where websockets might be answerwed if the response was sent and the update_handler return true (using the `response.finish`).
+
+***
+
 Change log v.0.0.10
 
 **Fix**: Fixed an issue where the last byte of an incoming Websocket message wouldn't be unmasked - resulting in corrupt data.
