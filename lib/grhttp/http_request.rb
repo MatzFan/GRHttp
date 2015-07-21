@@ -70,11 +70,12 @@ module GRHttp
 			self[:requested_protocol]
 		end
 
+		# @return [true, false] returns true if the requested was an SSL protocol (true also if the connection is clear-text behind an SSL Proxy, such as with some PaaS providers).
 		def ssl?
 			io.ssl? || self[:requested_protocol] == 'https' || self[:requested_protocol] == 'wss'
 		end
 
-		# the io used for the request.
+		# @return [BasicIO, SSLBasicIO] the io used for the request.
 		def io
 			self[:io]			
 		end
