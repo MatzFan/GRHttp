@@ -41,7 +41,7 @@ module GRHttp
 				# should consider adopting the websocket gem for handshake and framing:
 				# https://github.com/imanel/websocket-ruby
 				# http://www.rubydoc.info/github/imanel/websocket-ruby
-				return refuse response unless handler
+				return refuse response unless handler || handler == true
 				io = request[:io]
 				io[:keep_alive] = true
 				response.status = 101
