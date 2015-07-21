@@ -2,6 +2,12 @@
 
 ***
 
+Change log v.0.0.12
+
+**update**: requires the updated GReactor (v.0.0.10)
+
+***
+
 Change log v.0.0.11
 
 **Fix**: Fixed an issue where websockets might be answerwed if the response was sent and the update_handler return true (using the `response.finish`).

@@ -138,7 +138,7 @@ module GRHttp
 			io[:ws_extentions] = [].freeze
 			(io[:websocket_handler] = WSClient.new io[:request]).on_open(WSEvent.new(io, nil))
 			# add the socket to the EventMachine IO reactor
-			GReactor.add_raw_io_to_stack io.io, io
+			GReactor.add_raw_io io.io, io
 			return io[:websocket_handler]
 			rescue => e
 				socket.close if socket
