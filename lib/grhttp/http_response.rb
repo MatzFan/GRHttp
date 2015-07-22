@@ -196,7 +196,7 @@ module GRHttp
 			@io.send "0\r\n\r\n" if @chunked
 			@finished = true
 			# io.close unless io[:keep_alive]
-			GReactor.log_raw "#{@request[:client_ip]} [#{Time.now.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:requested_protocol]}\/#{@request[:version]}\" #{@status} #{bytes_sent.to_s} #{"%i" % ((Time.now - @request[:time_recieved])*1000)}ms\n" # %0.3f
+			GReactor.log_raw("#{@request[:client_ip]} [#{Time.now.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:requested_protocol]}\/#{@request[:version]}\" #{@status} #{bytes_sent.to_s} #{"%i" % ((Time.now - @request[:time_recieved])*1000)}ms\n").clear # %0.3f
 		end
 
 		# Danger Zone (internally used method, use with care): attempts to finish the response - if it was not flaged as streaming or completed.
@@ -306,12 +306,17 @@ module GRHttp
 			@cookies.each {|k,v| out << "Set-Cookie: #{k.to_s}=#{v.to_s}\r\n"}
 			out << "\r\n"
 
-			@body = @body.join if @body && @body.is_a?(Array)
-			@body = nil if @body.empty?
 			io.send out
-			send_body @body unless request.head?
-			@body = nil
+			out.clear
 			@headers.freeze
+			if @body && @body.is_a?(Array)
+				@body = @body.join 
+				send_body @body unless @body.empty? || request.head?
+				@body.clear if @body
+			else
+				send_body @body if @body && !request.head?
+			end
+			@body = nil
 		end
 
 		# sends the body or part thereof

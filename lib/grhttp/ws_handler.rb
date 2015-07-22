@@ -12,7 +12,10 @@ module GRHttp
 			#
 			# This method is called within a lock on the connection (Mutex) - craeful from double locking.
 			def call io
-				extract_message io, StringIO.new(io.read.to_s)
+				extract_message io, a = StringIO.new(io.read.to_s)
+				a.string.clear
+				a.close
+
 			end
 			# This method is called by the reactor.
 			# By default, this method reads the data from the IO and calls the `#on_message data` method.

@@ -2,6 +2,14 @@
 
 ***
 
+Change log v.0.0.13
+
+**performance**: clears HTTP and Websocket parsing (and logging) memory faster.
+
+**update**: requires the updated GReactor (v.0.0.11)
+
+***
+
 Change log v.0.0.12
 
 **update**: requires the updated GReactor (v.0.0.10)

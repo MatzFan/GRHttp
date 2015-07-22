@@ -1,4 +1,3 @@
-require 'stringio'
 module GRHttp
 
 	# These are some HTTP helper methods supplied for your convinience and the Generic HTTP server's use.

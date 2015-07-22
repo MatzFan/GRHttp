@@ -1,4 +1,3 @@
-require 'stringio'
 module GRHttp
 
 	# This module and it's members are used internally and AREN'T part of the public API.
@@ -34,6 +33,8 @@ module GRHttp
 						end
 					end
 				end
+				data.string.clear
+				data.close
 			end
 
 			protected

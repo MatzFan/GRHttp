@@ -1,4 +1,3 @@
-require 'stringio'
 module GRHttp
 
 	class WSEvent
@@ -39,12 +38,12 @@ module GRHttp
 		end
 		# Sends a ping and returns he WSEvent object.
 		def ping
-			@io.send( PING_FRAME )
+			@io.write PING_FRAME
 			self
 		end
 		# Sends a pong and returns he WSEvent object.
 		def pong
-			@io.send( PONG_FRAME )
+			@io.write PONG_FRAME
 			self
 		end
 
@@ -95,9 +94,8 @@ module GRHttp
 		PONG_FRAME = "\x8A\x00".freeze
 		PING_FRAME = "\x89\x00".freeze
 		CLOSE_FRAME = "\x88\x00".freeze
-		AUTOPING_PROC = Proc.new {|ws, i| GReactor.run_every i, 1, ws.ping, i, &AUTOPING_PROC unless ws.closed?}
-		AUTOPONG_PROC = Proc.new {|ws, i| GReactor.run_every i, 1, ws.pong, i, &AUTOPONG_PROC unless ws.closed?}
-		PING_PROC = Proc.new {|res| EventMachine.timed_job ping_interval, 1, [res.ping], PING_PROC unless res.service.disconnected? || !ping_interval }
+		AUTOPING_PROC = Proc.new {|ws, i| GReactor.run_after i, ws.ping, i, &AUTOPING_PROC unless ws.closed?}
+		AUTOPONG_PROC = Proc.new {|ws, i| GReactor.run_after i, ws.pong, i, &AUTOPONG_PROC unless ws.closed?}
 	end
 end
 
