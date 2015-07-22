@@ -13,6 +13,13 @@ module GRHttp
 			string
 		end
 
+		# re-encodes a string into UTF-8
+		def self.try_utf8!(string, encoding= 'utf-8')
+			return false unless string
+			string.force_encoding('binary') unless string.force_encoding(encoding).valid_encoding?
+			string
+		end
+
 		# Escapes html. based on the WEBRick source code, escapes &, ", > and < in a String object
 		def self.escape(string)
 			string.gsub('&', '&amp;')
@@ -128,7 +135,7 @@ module GRHttp
 		# Changes String to a Ruby Object, if it's a special string
 		def self.rubyfy!(string)
 			return false unless string
-			# make_utf8! string
+			try_utf8! string
 			if string == 'true'
 				string = true
 			elsif string == 'false'
