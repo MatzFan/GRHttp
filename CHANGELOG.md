@@ -4,7 +4,7 @@
 
 Change log v.0.0.14
 
-**Fix**: attempts to encode incoming data as UTF8 when the encoding conforms.
+**update**: attempts to encode incoming data as UTF8 when the encoding conforms.
 
 ***
 
