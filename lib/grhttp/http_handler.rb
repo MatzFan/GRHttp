@@ -20,15 +20,20 @@ module GRHttp
 						request = io[:request]; io[:request] = nil
 						response = HTTPResponse.new request
 						break if io.io.closed?
-						if request.upgrade?
-							WSHandler.http_handshake request, response, (io.params[:upgrade_handler] || NO_HANDLER).call(request, response) if WSHandler.is_valid_request?(request, response)
-						else
-							ret = (io.params[:http_handler] || NO_HANDLER).call(request, response)
-							if ret.is_a?(String) && !response.finished?
-								response << ret 
-							elsif ret == false
-								response.clear && (response.status = 404) && (response << HTTPResponse::STATUS_CODES[404])
-							end
+						begin
+							if request.upgrade?
+								WSHandler.http_handshake request, response, (io.params[:upgrade_handler] || NO_HANDLER).call(request, response) if WSHandler.is_valid_request?(request, response)
+							else
+								ret = (io.params[:http_handler] || NO_HANDLER).call(request, response)
+								if ret.is_a?(String) && !response.finished?
+									response << ret 
+								elsif ret == false
+									response.clear && (response.status = 404) && (response << HTTPResponse::STATUS_CODES[404])
+								end
+								response.try_finish
+							end							
+						rescue => e
+							response = HTTPResponse.new request, 500, {}, HTTPResponse::STATUS_CODES[500]
 							response.try_finish
 						end
 					end
