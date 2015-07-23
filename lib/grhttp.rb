@@ -23,6 +23,8 @@ require "grhttp/http_response"
 
 require "grhttp/api"
 
+require "grhttp/rack_support"
+
 # please read the {file:README.md} file for an introduction to GRHttp.
 #
 # here's the famous Hello World to get you thinking:

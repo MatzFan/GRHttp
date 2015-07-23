@@ -19,11 +19,13 @@ module GRHttp
 	#
 	#
 	def listen params = {}, &block
+		@listeners ||= {}
 		params[:http_handler] ||= params[:handler] ||= block
 		params[:upgrade_handler] ||= params[:handler]
 		params[:handler] = Base::HTTPHandler
 		params[:timeout] ||= 5
 		GReactor.listen params
+		@listeners[params[:port]] = params
 	end
 
 	# Defers any missing methods to the GReactor Library.
