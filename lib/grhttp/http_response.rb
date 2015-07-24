@@ -35,6 +35,7 @@ module GRHttp
 			@bytes_sent = 0
 			@finished = @streaming = false
 			@cookies = {}
+			@quite = false
 			@chunked = false
 			# propegate flash object
 			@flash = Hash.new do |hs,k|
@@ -96,6 +97,11 @@ module GRHttp
 		# It's also possible to use this combined hash to delete cookies, using: response.cookies[:name] = nil
 		def cookies
 			@request.cookies
+		end
+
+		# supresses logging on success.
+		def quite!
+			@quite = true
 		end
 
 		# pushes data to the buffer of the response. this is the preferred way to add data to the response.
@@ -196,7 +202,7 @@ module GRHttp
 			@io.send "0\r\n\r\n" if @chunked
 			@finished = true
 			# io.close unless io[:keep_alive]
-			GReactor.log_raw("#{@request[:client_ip]} [#{Time.now.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:requested_protocol]}\/#{@request[:version]}\" #{@status} #{bytes_sent.to_s} #{"%i" % ((Time.now - @request[:time_recieved])*1000)}ms\n").clear # %0.3f
+			finished_log
 		end
 
 		# Danger Zone (internally used method, use with care): attempts to finish the response - if it was not flaged as streaming or completed.
@@ -266,6 +272,10 @@ module GRHttp
 		}
 
 		protected
+
+		def finished_log
+			GReactor.log_raw("#{@request[:client_ip]} [#{Time.now.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:requested_protocol]}\/#{@request[:version]}\" #{@status} #{bytes_sent.to_s} #{"%i" % ((Time.now - @request[:time_recieved])*1000)}ms\n").clear unless @quite# %0.3f
+		end
 
 		# Danger Zone (internally used method, use with care): fix response's headers before sending them (date, connection and transfer-coding).
 		def fix_cookie_headers

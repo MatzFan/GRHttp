@@ -162,6 +162,9 @@ module GRHttp
 					m = header.split /\:[\s]*/ , 2
 					m[0].downcase! if m[0]
 					if m[0] == 'cookie'
+						# save cookies for Rack, if applicable
+						request[ m[0] ] ? (request[ m[0] ] << "; #{m[1].strip}") : (request[ m[0] ] = m[1].strip ) if request[:io].params[:http_handler] == ::GRHttp::Base::Rack
+						# extract data
 						HTTP.extract_data m[1].split(HEADER_SPLIT_REGX), request.cookies, :uri
 					elsif m[0] == 'set-cookie'
 						m[1] = m[1].split(';')[0]
@@ -261,6 +264,8 @@ module GRHttp
 
 		# read the body's data and parse any incoming data.
 		def self._read_body request
+			# save body for Rack, if applicable
+			request[:rack_input] = StringIO.new(request[:body].dup.force_encoding('binary')) if request[:io].params[:http_handler] == ::GRHttp::Base::Rack
 			# parse content
 			case request['content-type'].to_s
 			when /x-www-form-urlencoded/
