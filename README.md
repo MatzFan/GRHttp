@@ -28,7 +28,7 @@ Or install it yourself as:
 
 ### We _can_...
 
-It's true that we _can_ comfortably use GRHttp as a Rack server - just enter the folder for your favorit Rack compatible application (such as Rails or Sinatra) and write:
+It's true that we _can_ comfortably use GRHttp as a Rack server - just enter the folder for your favorit Rack compatible application (such as Rails or Sinatra) and write (remember to edit your `Gemfile` first):
 
     $ rackup -s grhttp -p 3000
 
@@ -41,7 +41,7 @@ ENV["RACK_HANDLER"] = 'grhttp'
 
 So, we know we _can_, but _should_ we?
 
-There is no simple answer. Using GRHttp through Rack is slower by nature and uses an older server workflow design. on the other hand, if you have an existing application, what is the sense of re-writing all your code?
+There is no simple answer. Using GRHttp through Rack is slower by nature and uses an older (and heavier) server workflow design. on the other hand, if you have an existing application, what is the sense of re-writing all your code?
 
 ### We don't have to decide?!
 
@@ -64,18 +64,14 @@ GRHttp.listen do |request, response|
   end
 end
 
-app = Proc.new do |env|
+rack_app = Proc.new do |env|
   [200, {"Content-Type" => "text/html", "Content-Length" => '16' }, ['Hello from Rack!'] ]
 end
 
-run app
+run rack_app
 ```
 
-Run this code using (remember to be in the folder with the `config.ru` file):
-
-     $ rackup -s grhttp -p 3000
-
-Now test:
+Run this code using `$ rackup -s grhttp -p 3000` (remember to be in the folder with the `config.ru` file)... Now test:
 
 * GRHttp native server on: [http:localhost:3000/grhttp](http:localhost:3000/grhttp)
 * GRHttp-Rack server on: [http:localhost:3000/rack](http:localhost:3000/rack)
