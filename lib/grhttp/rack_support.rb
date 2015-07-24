@@ -86,7 +86,6 @@ module GRHttp
 			"GATEWAY_INTERFACE"	=>"CGI/1.2",
 			'pl.params'			=> :params,
 			'pl.cookies'		=> :cookies,
-			'rack.version'		=> Rack.version.split('.'),
 			'rack.logger'		=> GReactor,
 			'rack.url_scheme'	=> :requested_protocol,
 			'rack.input'		=> :rack_input,
@@ -97,6 +96,8 @@ module GRHttp
 			# 'rack.hijack_io'	=> nil,
 			'rack.run_once'		=> false
 		}
+		RACK_DICTIONARY['rack.version'] = ::Rack.version.split('.') if defined?(::Rack)
+
 	end
 
 end
