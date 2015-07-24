@@ -8,15 +8,21 @@ module GRHttp
 				@app = app			
 				add = true
 				(GReactor.instance_variable_get(:@listeners) || {}).each do |params, io|
-					add = true
+					# if this is the first listener with a default port - update the port number
+					params[:port] = options[:Port] if params[:port] == 3000 && add
 					params[:pre_rack_handler] = params[:http_handler]
 					params[:http_handler] = self
+					add = false
 				end
 
-				GRHttp.listen http_handler: self if add
+				GRHttp.listen port: options[:Port], bind: options[:Host], http_handler: self if add
+
+				GReactor.log_raw "\r\nStarting GRHttp v. #{GRHttp::VERSION} on GReactor #{GReactor::VERSION}.\r\n"
+				GReactor.log_raw "\r\nUse ^C to exit\r\n"
 
 				GReactor.start
-				GReactor.join
+				GReactor.join {GReactor.log_raw "\r\nGRHttp and GReactor starting shutdown\r\n"}
+				GReactor.log_raw "\r\nGRHttp and GReactor completed shutdown\r\n"
 			end
 			def call request, response
 				if tmp = request[:io].params[:pre_rack_handler]

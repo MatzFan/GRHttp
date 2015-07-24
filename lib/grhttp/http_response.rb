@@ -37,6 +37,7 @@ module GRHttp
 			@cookies = {}
 			@quite = false
 			@chunked = false
+			@headers['connection'] = 'close' if @request['connection'] && @request['connection'].downcase == 'close'
 			# propegate flash object
 			@flash = Hash.new do |hs,k|
 				hs["magic_flash_#{k.to_s}".to_sym] if hs.has_key? "magic_flash_#{k.to_s}".to_sym
@@ -201,7 +202,7 @@ module GRHttp
 			self.send
 			@io.send "0\r\n\r\n" if @chunked
 			@finished = true
-			# io.close unless io[:keep_alive]
+			io.close unless io[:keep_alive]
 			finished_log
 		end
 
