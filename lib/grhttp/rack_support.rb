@@ -79,6 +79,7 @@ module GRHttp
 		end
 
 		RACK_DICTIONARY = {
+			"GATEWAY_INTERFACE"	=>"CGI/1.2",
 			'SERVER_SOFTWARE'	=> "GRHttp v. #{GRHttp::VERSION} on GReactor #{GReactor::VERSION}",
 			'REQUEST_METHOD'	=> :method,
 			'SCRIPT_NAME'		=> ''.force_encoding('ASCII-8BIT'),
@@ -89,7 +90,6 @@ module GRHttp
 			'REQUEST_URI'		=> :query,
 			'SERVER_PORT'		=> :port,
 			'REMOTE_ADDR'		=> :client_ip,
-			"GATEWAY_INTERFACE"	=>"CGI/1.2",
 			'pl.params'			=> :params,
 			'pl.cookies'		=> :cookies,
 			'rack.logger'		=> GReactor,
