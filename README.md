@@ -5,7 +5,9 @@ This is a native Ruby HTTP and WebSocket multi-threaded server that uses the [GR
 
 This means it's all ruby, no C or Java code. The code is thread-safe and also supports GReactor's forking... although it might effect your code (especially with regards to websocket broadcasting).
 
-## Installation
+GRHttp is Rack compatible... although [GRHttp is meant to be a step forward](HTTP.md), taking what we learned from our experience using Rack and designing the nex generation of servers, as suggested by [José Valim](http://blog.plataformatec.com.br/2012/06/why-your-web-framework-should-not-adopt-rack-api/).
+
+## How do I get it?
 
 Add this line to your application's Gemfile:
 
@@ -19,7 +21,66 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install grhttp
+    $ [sudo] gem install grhttp
+
+
+## To Rack or Not to Rack?
+
+### We _can_...
+
+It's true that we _can_ comfortably use GRHttp as a Rack server - just enter the folder for your favorit Rack compatible application (such as Rails or Sinatra) and write:
+
+    $ rackup -s grhttp -p 3000
+
+In Rails, add the `grhttp` gem you your gemfile and add the following to your eviroment.rb file:
+
+```ruby
+ENV["RACK_HANDLER"] = 'grhttp'
+```
+### We _should?_
+
+So, we know we _can_, but _should_ we?
+
+There is no simple answer. Using GRHttp through Rack is slower by nature and uses an older server workflow design. on the other hand, if you have an existing application, what is the sense of re-writing all your code?
+
+### We don't have to decide?!
+
+The wonderful thing is, we really don't have to decide - we can mix and match GRHttp handlers with the Rack app (native handlers have priority).
+
+Here is a quick example - place this `config.ru` file in a new folder and see for yourself:
+
+```ruby
+# config.ru
+ENV['RACK_ENV'] = 'production'
+
+require 'grhttp'
+
+GRHttp.listen do |request, response|
+  if request[:path] == '/grhttp'
+    response << "Hello from GRHttp!"
+    true
+  else
+    false
+  end
+end
+
+app = Proc.new do |env|
+  [200, {"Content-Type" => "text/html", "Content-Length" => '16' }, ['Hello from Rack!'] ]
+end
+
+run app
+```
+
+Run this code using (remember to be in the folder with the `config.ru` file):
+
+     $ rackup -s grhttp -p 3000
+
+Now test:
+
+* GRHttp native server on: [http:localhost:3000/grhttp](http:localhost:3000/grhttp)
+* GRHttp-Rack server on: [http:localhost:3000/rack](http:localhost:3000/rack)
+
+This is How the [Plezi framework](https://github.com/boazsegev/plezi), which uses GRHttp's native server allows you to both run the Plezi framework's app and your Rails/Sinatra app at the same time - letting you use websockets and advanced features while still maintaining your existing codebase.
 
 ## Usage
 
