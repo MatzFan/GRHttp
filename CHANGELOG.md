@@ -2,6 +2,12 @@
 
 ***
 
+Change log v.0.0.15
+
+**Wow**: This is GRHttp's first version as a Dual-Rack-GRHttp server - this means you can use GRHttp both as a Rack server (with all of Rack's limitations) while using GRHttp's native features outside of Rack at the same time (see the [README]{README.md}) for more details.
+
+***
+
 Change log v.0.0.14
 
 **update**: attempts to encode incoming data as UTF8 when the encoding conforms.
