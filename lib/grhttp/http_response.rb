@@ -37,7 +37,6 @@ module GRHttp
 			@cookies = {}
 			@quite = false
 			@chunked = false
-			(@headers['connection'] = 'close') if @request['version'].to_f == 1 || @request['connection'].downcase == 'close'
 			# propegate flash object
 			@flash = Hash.new do |hs,k|
 				hs["magic_flash_#{k.to_s}".to_sym] if hs.has_key? "magic_flash_#{k.to_s}".to_sym
@@ -202,7 +201,7 @@ module GRHttp
 			self.send
 			@io.send "0\r\n\r\n" if @chunked
 			@finished = true
-			io.close unless io[:keep_alive]
+			@io.close unless @io[:keep_alive]
 			finished_log
 		end
 
@@ -297,23 +296,23 @@ module GRHttp
 		def send_headers
 			return false if @headers.frozen?
 			fix_cookie_headers
-			headers['cache-control'] ||= 'no-cache'
+			@headers['cache-control'] ||= 'no-cache'
 			out = ''
 
 			out << "#{@http_version} #{@status} #{STATUS_CODES[@status] || 'unknown'}\r\nDate: #{Time.now.httpdate}\r\n"
 
-			unless headers['connection']
+			unless @headers['connection'] || (@request[:version].to_f <= 1 && (@request['connection'].nil? || !@request['connection'].match(/^k/i)))
 				io[:keep_alive] = true
 				out << "Connection: Keep-Alive\r\nKeep-Alive: timeout=5\r\n"
 			end
 
-			if headers['content-length']
+			if @headers['content-length']
 				@chunked = false
 			else
 				@chunked = true
 				out << "Transfer-Encoding: chunked\r\n"
 			end
-			headers.each {|k,v| out << "#{k.to_s}: #{v}\r\n"}
+			@headers.each {|k,v| out << "#{k.to_s}: #{v}\r\n"}
 			@cookies.each {|k,v| out << "Set-Cookie: #{k.to_s}=#{v.to_s}\r\n"}
 			out << "\r\n"
 
