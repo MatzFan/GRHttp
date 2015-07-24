@@ -37,7 +37,7 @@ module GRHttp
 			@cookies = {}
 			@quite = false
 			@chunked = false
-			@headers['connection'] = 'close' if @request['connection'] && @request['connection'].downcase == 'close'
+			(@headers['connection'] = 'close') if @request['version'].to_f == 1 || @request['connection'].downcase == 'close'
 			# propegate flash object
 			@flash = Hash.new do |hs,k|
 				hs["magic_flash_#{k.to_s}".to_sym] if hs.has_key? "magic_flash_#{k.to_s}".to_sym
