@@ -301,7 +301,7 @@ module GRHttp
 
 			out << "#{@http_version} #{@status} #{STATUS_CODES[@status] || 'unknown'}\r\nDate: #{Time.now.httpdate}\r\n"
 
-			unless @headers['connection'] || (@request[:version].to_f <= 1 && (@request['connection'].nil? || !@request['connection'].match(/^k/i)))
+			unless @headers['connection'] || (@request[:version].to_f <= 1 && (@request['connection'].nil? || !@request['connection'].match(/^k/i))) || (@request['connection'] && @request['connection'].match(/^c/i))
 				io[:keep_alive] = true
 				out << "Connection: Keep-Alive\r\nKeep-Alive: timeout=5\r\n"
 			end
