@@ -304,6 +304,8 @@ module GRHttp
 			unless @headers['connection'] || (@request[:version].to_f <= 1 && (@request['connection'].nil? || !@request['connection'].match(/^k/i))) || (@request['connection'] && @request['connection'].match(/^c/i))
 				io[:keep_alive] = true
 				out << "Connection: Keep-Alive\r\nKeep-Alive: timeout=5\r\n"
+			else
+				@headers['connection'] ||= 'close'
 			end
 
 			if @headers['content-length']

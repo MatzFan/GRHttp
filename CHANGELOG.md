@@ -2,6 +2,12 @@
 
 ***
 
+Change log v.0.0.16
+
+**Fix**: GRHttp will better respect requests from HTTP/1 or with the header 'Connection: close'.
+
+***
+
 Change log v.0.0.15
 
 **Wow**: This is GRHttp's first version as a Dual-Rack-GRHttp server - this means you can use GRHttp both as a Rack server (with all of Rack's limitations) while using GRHttp's native features outside of Rack at the same time (see the [README]{README.md}) for more details.
