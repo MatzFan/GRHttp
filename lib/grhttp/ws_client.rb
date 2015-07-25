@@ -56,7 +56,7 @@ module GRHttp
 		#
 		# This method accepts two parameters:
 		# url:: a String representing the URL of the websocket. i.e.: 'ws://foo.bar.com:80/ws/path'
-		# options:: a Hash with options to be used. The options will be used to define
+		# options:: a Hash with options to be used. The options will be used to define the connection's details (i.e. ssl etc') and the Websocket callbacks (i.e. on_open(ws), on_close(ws), on_message(ws))
 		# &block:: an optional block that accepts one parameter (data) and will be used as the `#on_message(data)`
 		#
 		# The method will either return a WebsocketClient instance object or it will raise an exception.
