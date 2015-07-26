@@ -91,7 +91,7 @@ Although GRHttp\* does more for your application, it still performs quite well a
 | Webrick  | 778.56  | Don't use! |
 | Unicorn\*\*| 1,649.20 | Unicorn runs native, not Rack (seems odd) |
 | Passenger\*\*| ~11,095 | Passanger native on nginx, not Rack |
----------------------------
+|----------|---------|---------|
 | GRHttp (on Rack)| 2,533.06 | Running a Rack app |
 | GRHttp (Native)| 7,725.65 | Running a native app |
 | GRHttp (Hybrid)| 2,356.97(R) | Rack path on the hybrid app above|
