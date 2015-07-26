@@ -78,6 +78,53 @@ Run this code using `$ rackup -s grhttp -p 3000` (remember to be in the folder w
 
 This is How the [Plezi framework](https://github.com/boazsegev/plezi), which uses GRHttp's native server allows you to both run the Plezi framework's app and your Rails/Sinatra app at the same time - letting you use websockets and advanced features while still maintaining your existing codebase.
 
+### How does it stack up against other servers?
+
+The greatest sin is believing 'Hello World' apps are a good benchmark - they are NOT. But since they are a simple (albit flawed) way to isolate the server component, here goes...
+
+Although GRHttp\* does more for your application, it still performs quite well as a Rack server. Here is a quick comparison I ran on my MacBook Pro, on Ruby MRI v. ruby 2.2.2p95:
+
+| Server   | Req/Sec | Remarks |
+|----------|---------|     |
+| Thin     | 2,755.31 |     |
+| Puma     | 2,906.29 |    |
+| Webrick  | 778.56  | Don't use! |
+| Unicorn\*\*| 1,649.20 | Unicorn runs native, not Rack (seems odd) |
+| Passenger\*\*| ~11,095 | Passanger native on nginx, not Rack |
+---------------------------
+| GRHttp (on Rack)| 2,533.06 | Running a Rack app |
+| GRHttp (Native)| 7,725.65 | Running a native app |
+| GRHttp (Hybrid)| 2,356.97(R) | Rack path on the hybrid app above|
+| GRHttp (Hybrid)| 7,835.20(N) | Native path on the hybrid app above|
+
+It should be noted that some of the servers only logged errors while GRHttp logged every request. Disabling the GRHttp logging added approximately a 20% performance boost to the native app.
+
+Also, some of the nimbers seemed off to me... While the hybrid app ranning a bit faster seems to be a statistical deviation, I have no explanation as to Unicorn's slowness. I suggest you run your own benchmarks.
+
+This was the Rackapp tested:
+
+```ruby
+# config.ru
+ENV['RACK_ENV'] = 'production'
+app = Proc.new do |env|
+  [200, {"Content-Type" => "text/html", "Content-Length" => '16' }, ['Hello from Rack!'] ]
+end
+run app
+```
+
+The native GRHttp app tested was a terminal command:
+
+      $ ruby -rgrhttp -e "GRHttp.start { GRHttp.listen {'Hello from GRHttp :-)'} }"
+
+
+Benchmarks were executed using `wrk` since not all servers answered `ab` (the issue is probably due to `close` vs. `keep-alive` connections over HTTP/1 while `wrk` uses HTTP/1.1):
+
+     $ wrk -c400 -d10 -t12 http://localhost:3000/
+
+\*In contrast to other Rack servers, GRHttp parses all of the HTTP request, including a writable cookie-jar, POST data and query string data, available also for Rack apps using the env\['gr.cookies']( env\['pl.cookies'] in older version ) and env\['gr.params']( env\['pl.params'] in older versions).
+
+\*\* Both Passenger and Unicorn run their own processes, they are more 'Rack emulation' than Rack 
+
 ## Usage
 
 GRHttp allows you to write a quick web service based of the [GReactor](https://github.com/boazsegev/GReactor) library - So you get Asynchronous events, timed event and a Server (or servers) - all in a native Ruby package.
