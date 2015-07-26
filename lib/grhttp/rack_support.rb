@@ -92,6 +92,8 @@ module GRHttp
 			'REMOTE_ADDR'		=> :client_ip,
 			'pl.params'			=> :params,
 			'pl.cookies'		=> :cookies,
+			'gr.params'			=> :params,
+			'gr.cookies'		=> :cookies,
 			'rack.logger'		=> GReactor,
 			'rack.url_scheme'	=> :requested_protocol,
 			'rack.input'		=> :rack_input,
