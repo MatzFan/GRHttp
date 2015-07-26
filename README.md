@@ -85,7 +85,7 @@ The greatest sin is believing 'Hello World' apps are a good benchmark - they are
 Although GRHttp\* does more for your application, it still performs quite well as a Rack server. Here is a quick comparison I ran on my MacBook Pro, on Ruby MRI v. ruby 2.2.2p95:
 
 | Server   | Req/Sec | Remarks |
-|----------|---------|     |
+|----------|---------|---------|
 | Thin     | 2,755.31 |     |
 | Puma     | 2,906.29 |    |
 | Webrick  | 778.56  | Don't use! |
