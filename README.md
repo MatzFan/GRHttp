@@ -99,7 +99,7 @@ Although GRHttp\* does more for your application, it still performs quite well a
 
 It should be noted that some of the servers only logged errors while GRHttp logged every request. Disabling the GRHttp logging added approximately a 20% performance boost to the native app.
 
-Also, some of the nimbers seemed off to me... While the hybrid app ranning a bit faster seems to be a statistical deviation, I have no explanation as to Unicorn's slowness. I suggest you run your own benchmarks.
+Also, some of the numbers seemed off to me... While the hybrid app ranning a bit faster seems to be a statistical deviation, I have no explanation as to Unicorn's slowness. I suggest you run your own benchmarks.
 
 This was the Rackapp tested:
 
