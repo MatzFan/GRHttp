@@ -44,19 +44,15 @@ module GRHttp
 			@status = res[0]
 			#fix cookies
 			# puts res[1]['Set-Cookie'].dump
-			res[1]['Rack-Cookies'] = "true\r\nSet-Cookie: " + (res[1].delete('Set-Cookie').split("\n")).join("\r\nSet-Cookie: ") if res[1]['Set-Cookie']
+			res[1]['X-Rack-Cookies'] = "true\r\nSet-Cookie: " + (res[1].delete('Set-Cookie').split("\n")).join("\r\nSet-Cookie: ") if res[1]['Set-Cookie']
 			res[1].each {|h, v| self[h.dup] = v}
-			# send body
-			if res[2].is_a?(Array)
-				@body = res[2]
-			elsif res[2].is_a?(Rack::Chunked::Body)
-				@body = nil
-				res[2].instance_variable_get(:@body).each {|d| write d }
+			# send body using Rack's rendering 
+			unless @request.head?
+				send_headers
+				res[2].each {|d| @io.write d }
 				res[2].close if res[2].respond_to? :close
-			else
-				res[2].each {|d| write d }
-				res[2].close if res[2].respond_to? :close
-				try_finish
+				@io.close unless @io[:keep_alive]
+				@finished = true
 			end
 		end
 		protected
