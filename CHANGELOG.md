@@ -2,13 +2,13 @@
 
 ***
 
-Change log v.0.0.17
+Change log v.0.0.18
 
 **Fix**: Fixed an issue with the method used to extract data into the params (or cookie) Hash. The issue caused an exception to be raised but the correct value to be placed in the Hash.
 
 ***
 
-Change log v.0.0.16
+Change log v.0.0.17
 
 **Fix**: Fixed a typo in the GRHttp's Rack variable naming (was `pl.cookies` instead of `gr.cookies`, same issue with `gr.params`).
 
