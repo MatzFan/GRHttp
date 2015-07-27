@@ -22,10 +22,11 @@ module GRHttp
 
 		# Escapes html. based on the WEBRick source code, escapes &, ", > and < in a String object
 		def self.escape(string)
-			string.gsub('&', '&amp;')
-			.gsub('"', '&quot;')
-			.gsub('>', '&gt;')
-			.gsub('<', '&lt;')
+			# string.gsub('&', '&amp;')
+			# .gsub('"', '&quot;')
+			# .gsub('>', '&gt;')
+			# .gsub('<', '&lt;')
+			CGI.escapeHTML(string.to_s)
 		end
 		
 		# Decodes data from :form, :html and :url (default) escaped strings.
@@ -104,7 +105,7 @@ module GRHttp
 				a = target_hash
 				p = param_name.gsub(']',' ').split(/\[/)
 				val = rubyfy! param_value
-				p.each_index { |i| p[i].strip! ; n = p[i].match(/^[0-9]+$/) ? p[i].to_i : p[i].to_sym ; p[i+1] ? [ ( a[n] ||= ( p[i+1] == ' ' ? [] : {} ) ), ( a = a[n]) ] : ( a.is_a?(Hash) ? (a[n] ? (a[n].is_a?(Array) ? (a << val) : a[n] = [a[n], val] ) : (a[n] = val) ) : (a << val) ) }
+				p.each_index { |i| p[i].strip! ; n = p[i].match(/^[0-9]+$/) ? p[i].to_i : p[i].to_sym ; p[i+1] ? [ ( a[n] ||= ( p[i+1] == ' ' ? [] : {} ) ), ( a = a[n]) ] : ( a.is_a?(Hash) ? (a[n] ? (a[n].is_a?(Array) ? (a[n] << val) : a[n] = [a[n], val] ) : (a[n] = val) ) : (a << val) ) }
 			rescue Exception => e
 				GReactor.error e
 				GReactor.error "(Silent): parameters parse error for #{param_name} ... maybe conflicts with a different set?"
@@ -124,11 +125,19 @@ module GRHttp
 		HEADER_SPLIT_REGX = /[;,][\s]?/
 
 		# extracts parameters from the query
-		def self.extract_data data, target_hash, decode = :form
+		def self.extract_params data, target_hash
 			data.each do |set|
-				list = set.split('=')
-				list.each {|s| HTTP.decode s, decode if s}
-				add_param_to_hash list.shift, list.join('='), target_hash
+				list = set.split('=', 2)
+				list.each {|s| if s; s.gsub!('+', '%20'); s.gsub!(/\%[0-9a-fA-F][0-9a-fA-F]/) {|m| m[1..2].to_i(16).chr}; end}
+				add_param_to_hash list.shift, list.shift, target_hash
+			end
+		end
+		# extracts parameters from the query
+		def self.extract_header data, target_hash
+			data.each do |set|
+				list = set.split('=', 2)
+				list.each {|s| s.gsub!(/\%([0-9a-f]){2}/i) {|m| m[1..2].to_i(16).chr} if s}
+				add_param_to_hash list.shift, list.shift, target_hash
 			end
 		end
 
@@ -165,10 +174,10 @@ module GRHttp
 						# save cookies for Rack, if applicable
 						request[ m[0] ] ? (request[ m[0] ] << "; #{m[1].strip}") : (request[ m[0] ] = m[1].strip ) if request[:io].params[:http_handler] == ::GRHttp::Base::Rack
 						# extract data
-						HTTP.extract_data m[1].split(HEADER_SPLIT_REGX), request.cookies, :uri
+						HTTP.extract_header m[1].split(HEADER_SPLIT_REGX), request.cookies
 					elsif m[0] == 'set-cookie'
 						m[1] = m[1].split(';')[0]
-						HTTP.extract_data m[1].split(HEADER_SPLIT_REGX), request.cookies, :uri
+						HTTP.extract_header m[1].split(HEADER_SPLIT_REGX), request.cookies
 					elsif m[1]
 						HTTP.make_utf8!(m[0])
 						HTTP.make_utf8!(m[1].rstrip! || m[1])
@@ -226,7 +235,7 @@ module GRHttp
 			request[:path] = tmp[0].chomp('/')
 			request[:original_path] = tmp[0].freeze
 			request[:quary_params] = tmp[1]
-			HTTP.extract_data tmp[1].split(PARAM_SPLIT_REGX), (request[:params] ||= {}) if tmp[1]
+			HTTP.extract_params tmp[1].split(PARAM_SPLIT_REGX), (request[:params] ||= {}) if tmp[1]
 			HTTP._read_body request if request[:body]
 
 
@@ -257,7 +266,7 @@ module GRHttp
 
 			 	# parse query for params - m[9] is the data part of the query
 			 	# if m[9]
-			 	# 	HTTP.extract_data m[9].split(PARAM_SPLIT_REGX), request[:params]
+			 	# 	HTTP.extract_params m[9].split(PARAM_SPLIT_REGX), request[:params]
 			 	# end
 			# end
 		end
@@ -269,7 +278,7 @@ module GRHttp
 			# parse content
 			case request['content-type'].to_s
 			when /x-www-form-urlencoded/
-				HTTP.extract_data request.delete(:body).split(/[&;]/), request[:params], :form # :uri
+				HTTP.extract_params request.delete(:body).split(/[&;]/), request[:params], :form # :uri
 			when /multipart\/form-data/
 				_read_multipart request, request, request.delete(:body)
 			when /text\/xml/
@@ -322,7 +331,7 @@ module GRHttp
 
 			cd = {}
 
-			HTTP.extract_data headers['content-disposition'].match(/[^;];([^\r\n]*)/)[1].split(/[;,][\s]?/), cd, :uri
+			HTTP.extract_header headers['content-disposition'].match(/[^;];([^\r\n]*)/)[1].split(/[;,][\s]?/), cd, :uri
 
 			name = name_prefix.dup
 
