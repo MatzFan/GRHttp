@@ -22,13 +22,13 @@ module GRHttp
 			# should synchronize?
 			# @io.locker.synchronize { ... } 
 			Base::WSHandler.send_data @io, data.to_s
-			# @io.send Base::WSHandler.frame_data(@io, data.to_s) if data
+			# @io.write Base::WSHandler.frame_data(@io, data.to_s) if data
 		end
 		alias :send :write
 		alias :<< :write
 		# Closes the websocket connection.
 		def close
-			@io.send( CLOSE_FRAME )
+			@io.write( CLOSE_FRAME )
 			@io.close
 		end
 		alias :disconnect :close

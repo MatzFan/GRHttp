@@ -352,7 +352,7 @@ module GRHttp
 					parser[:p_op_code] = nil if parser[:p_op_code] == 10
 				when 8 # close
 					# handle parser[:op_code] == 8 (close)
-					io.send( CLOSE_FRAME )
+					io.write( CLOSE_FRAME )
 					io.close
 					parser[:p_op_code] = nil if parser[:p_op_code] == 8
 				else

@@ -184,8 +184,8 @@ module GRHttp
 
 		# sends the response object. headers will be frozen (they can only be sent at the head of the response).
 		#
-		# the response will remain open for more data to be sent through (using `response << data` and `response.send`).
-		def send(str = nil)
+		# the response will remain open for more data to be sent through (using `response << data` and `response.write`).
+		def write(str = nil)
 			raise 'HTTPResponse IO MISSING: cannot send http response without an io.' unless @io
 			@body << str if @body && str
 			return if send_headers
@@ -193,13 +193,14 @@ module GRHttp
 			send_body(str)
 			self
 		end
+		alias :send :write
 
 		# Sends the response and flags the response as complete. Future data should not be sent. Your code might attempt sending data (which would probbaly be ignored by the client or raise an exception).
 		def finish
 			raise "Response already sent" if @finished
 			@headers['content-length'] ||= (@body = @body.join).bytesize if !headers_sent? && @body.is_a?(Array)
-			self.send
-			@io.send "0\r\n\r\n" if @chunked
+			self.write
+			@io.write "0\r\n\r\n" if @chunked
 			@finished = true
 			@io.close unless @io[:keep_alive]
 			finished_log
@@ -302,7 +303,7 @@ module GRHttp
 			out << "#{@http_version} #{@status} #{STATUS_CODES[@status] || 'unknown'}\r\nDate: #{Time.now.httpdate}\r\n"
 
 			unless @headers['connection'] || (@request[:version].to_f <= 1 && (@request['connection'].nil? || !@request['connection'].match(/^k/i))) || (@request['connection'] && @request['connection'].match(/^c/i))
-				io[:keep_alive] = true
+				@io[:keep_alive] = true
 				out << "Connection: Keep-Alive\r\nKeep-Alive: timeout=5\r\n"
 			else
 				@headers['connection'] ||= 'close'
@@ -318,27 +319,25 @@ module GRHttp
 			@cookies.each {|k,v| out << "Set-Cookie: #{k.to_s}=#{v.to_s}\r\n"}
 			out << "\r\n"
 
-			io.send out
+			@io.write out
 			out.clear
 			@headers.freeze
 			if @body && @body.is_a?(Array)
 				@body = @body.join 
-				send_body @body unless @body.empty? || request.head?
-				@body.clear if @body
-			else
-				send_body @body if @body && !request.head?
 			end
+			send_body(@body) && body.clear if @body && !@body.empty? && !request.head?
 			@body = nil
+			true
 		end
 
 		# sends the body or part thereof
 		def send_body data
 			return nil unless data
 			if @chunked
-				@io.send "#{data.bytesize.to_s(16)}\r\n#{data}\r\n"
+				@io.write "#{data.bytesize.to_s(16)}\r\n#{data}\r\n"
 				@bytes_sent += data.bytesize
 			else
-				io.send data
+				@io.write data
 				@bytes_sent += data.bytesize
 			end
 
