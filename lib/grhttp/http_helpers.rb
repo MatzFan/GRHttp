@@ -141,7 +141,9 @@ module GRHttp
 			end
 		end
 
-		# Changes String to a Ruby Object, if it's a special string
+		NUM_ZERO = '0'
+
+		# Changes String to a Ruby Object, if it's a special string...
 		def self.rubyfy!(string)
 			return false unless string
 			try_utf8! string
@@ -149,7 +151,7 @@ module GRHttp
 				string = true
 			elsif string == 'false'
 				string = false
-			elsif string.match(/[0-9]/) && !string.match(/[^0-9]/)
+			elsif string.to_i.to_s == string
 				string = string.to_i
 			end
 			string
