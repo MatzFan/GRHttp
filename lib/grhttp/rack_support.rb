@@ -51,12 +51,12 @@ module GRHttp
 				@body = res[2]
 			elsif res[2].is_a?(Rack::Chunked::Body)
 				@body = nil
-				res[2].instance_variable_get(:@body).each {|d| send d }
+				res[2].instance_variable_get(:@body).each {|d| write d }
 				res[2].close if res[2].respond_to? :close
 			else
-				@body = nil
-				res[2].each {|d| send d }
+				res[2].each {|d| write d }
 				res[2].close if res[2].respond_to? :close
+				try_finish
 			end
 		end
 		protected
@@ -67,12 +67,10 @@ module GRHttp
 			# env['pl.request'] = @request
 			# env.each {|k, v| env[k] = @request[v] if v.is_a?(Symbol)}
 			env.each {|k, v| env[k] = (@request[v].is_a?(String) ? ( @request[v].frozen? ? @request[v].dup.force_encoding('ASCII-8BIT') : @request[v].force_encoding('ASCII-8BIT') ): @request[v]) if v.is_a?(Symbol)}
-			@request.headers.each {|k, v| env["HTTP_#{k.upcase.gsub('-', '_')}"] = v }
+			@request.each {|k, v| env["HTTP_#{k.upcase.gsub('-', '_')}"] = v if k.is_a?(String) }
 			env['rack.input'] ||= StringIO.new(''.force_encoding('ASCII-8BIT'))
-			env['CONTENT_LENGTH'] = @request['content-length'] if @request['content-length']
-			env['CONTENT_TYPE'] = @request['content-type'] if @request['content-type']
-			env.delete 'HTTP_CONTENT_LENGTH'
-			env.delete 'HTTP_CONTENT_TYPE'
+			env['CONTENT_LENGTH'] = env.delete 'HTTP_CONTENT_LENGTH' if env['HTTP_CONTENT_LENGTH']
+			env['CONTENT_TYPE'] = env.delete 'HTTP_CONTENT_TYPE' if env['HTTP_CONTENT_TYPE']
 			env['HTTP_VERSION'] = "HTTP/#{request[:version].to_s}"
 			env['QUERY_STRING'] ||= ''
 			env
