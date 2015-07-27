@@ -107,7 +107,7 @@ Although GRHttp\* does more for your application, it still performs quite well a
 
 \*\* GReactor's forking was disabled for these tests, but GRHttp's performance is far improved when allowing it to fork the server to sub-processes using: `GR::Settings.set_forking 8` (I have 8 cores).
 
-It should be noted that some of the servers, such as thin, only logged errors while GRHttp logged every request. Disabling the GRHttp logging added approximately a 20% performance boost to the native app (almost 10K req/sec).
+It should be noted that some of the servers, such as Thin, only logged errors while GRHttp logged every request. Disabling the GRHttp logging added approximately a 20% performance boost to the native app (almost 10K req/sec).
 
 Also, some of the numbers seemed off to me... While the hybrid app ranning a bit faster seems to be a statistical deviation, I have no explanation as to Unicorn's slowness. I suggest you run your own benchmarks.
 
