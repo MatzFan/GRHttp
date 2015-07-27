@@ -94,10 +94,18 @@ Although GRHttp\* does more for your application, it still performs quite well a
 | Unicorn (N) | 1,649.20 | Unicorn runs native, not Rack |
 | Passenger (N) | ~11,095 | Passanger native on nginx, not Rack |
 |----------|---------|---------|
-| GRHttp (R)| 2,533.06 | Running a Rack app |
-| GRHttp (N)| 7,725.65 | Running a native app |
-| GRHttp (Hybrid)| 2,356.97(R) | Rack path on the hybrid app above|
-| GRHttp (Hybrid)| 7,835.20(N) | Native path on the hybrid app above|
+| GRHttp\*\* (R)| 2,533.06 | Running a Rack app |
+| GRHttp\*\* (N)| 7,725.65 | Running a native app |
+| GRHttp\*\* (Hybrid)| 2,356.97(R) | Rack path on the hybrid app above|
+| GRHttp\*\* (Hybrid)| 7,835.20(N) | Native path on the hybrid app above|
+|----------|---------|---------|
+| GRHttp\*\* (R)| 2,533.06 | Running a Rack app |
+| GRHttp\*\* (N)| 7,725.65 | Running a native app |
+| GRHttp\*\* (Hybrid)| 2,356.97(R) | Rack path on the hybrid app above|
+| GRHttp\*\* (Hybrid)| 7,835.20(N) | Native path on the hybrid app above|
+
+
+\*\* GReactor's forking was disabled for these tests, but GRHttp's performance is far improved when allowing it to fork the server to sub-processes using: `GR::Settings.set_forking 8` (I have 8 cores).
 
 It should be noted that some of the servers, such as thin, only logged errors while GRHttp logged every request. Disabling the GRHttp logging added approximately a 20% performance boost to the native app (almost 10K req/sec).
 
