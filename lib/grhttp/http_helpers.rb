@@ -141,8 +141,6 @@ module GRHttp
 			end
 		end
 
-		NUM_ZERO = '0'
-
 		# Changes String to a Ruby Object, if it's a special string...
 		def self.rubyfy!(string)
 			return false unless string
