@@ -62,7 +62,7 @@ module GRHttp
 			env = RACK_DICTIONARY.dup
 			# env['pl.request'] = @request
 			# env.each {|k, v| env[k] = @request[v] if v.is_a?(Symbol)}
-			env.each {|k, v| env[k] = (@request[v].is_a?(String) ? ( @request[v].frozen? ? @request[v].dup.force_encoding('ASCII-8BIT') : @request[v].force_encoding('ASCII-8BIT') ): @request[v]) if v.is_a?(Symbol)}
+			RACK_ADDON.each {|k, v| env[k] = (@request[v].is_a?(String) ? ( @request[v].frozen? ? @request[v].dup.force_encoding('ASCII-8BIT') : @request[v].force_encoding('ASCII-8BIT') ): @request[v])}
 			@request.each {|k, v| env["HTTP_#{k.upcase.gsub('-', '_')}"] = v if k.is_a?(String) }
 			env['rack.input'] ||= StringIO.new(''.force_encoding('ASCII-8BIT'))
 			env['CONTENT_LENGTH'] = env.delete 'HTTP_CONTENT_LENGTH' if env['HTTP_CONTENT_LENGTH']
@@ -72,11 +72,7 @@ module GRHttp
 			env
 		end
 
-		RACK_DICTIONARY = {
-			"GATEWAY_INTERFACE"	=>"CGI/1.2",
-			'SERVER_SOFTWARE'	=> "GRHttp v. #{GRHttp::VERSION} on GReactor #{GReactor::VERSION}",
-			'REQUEST_METHOD'	=> :method,
-			'SCRIPT_NAME'		=> ''.force_encoding('ASCII-8BIT'),
+		RACK_ADDON = {
 			'PATH_INFO'			=> :original_path,
 			'REQUEST_PATH'		=> :path,
 			'QUERY_STRING'		=> :quary_params,
@@ -84,16 +80,21 @@ module GRHttp
 			'REQUEST_URI'		=> :query,
 			'SERVER_PORT'		=> :port,
 			'REMOTE_ADDR'		=> :client_ip,
-			'pl.params'			=> :params,
-			'pl.cookies'		=> :cookies,
 			'gr.params'			=> :params,
 			'gr.cookies'		=> :cookies,
-			'rack.logger'		=> GReactor,
+			'REQUEST_METHOD'	=> :method,
 			'rack.url_scheme'	=> :requested_protocol,
-			'rack.input'		=> :rack_input,
+			'rack.input'		=> :rack_input
+		}
+
+		RACK_DICTIONARY = {
+			"GATEWAY_INTERFACE"	=>"CGI/1.2",
+			'SERVER_SOFTWARE'	=> "GRHttp v. #{GRHttp::VERSION} on GReactor #{GReactor::VERSION}",
+			'SCRIPT_NAME'		=> ''.force_encoding('ASCII-8BIT'),
+			'rack.logger'		=> GReactor,
 			'rack.errors'		=> StringIO.new(''),
 			'rack.multithread'	=> true,
-			'rack.multiprocess'	=> true,
+			'rack.multiprocess'	=> (GR::Settings.forking?),
 			# 'rack.hijack?'		=> false,
 			# 'rack.hijack_io'	=> nil,
 			'rack.run_once'		=> false
