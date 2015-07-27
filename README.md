@@ -41,7 +41,7 @@ ENV["RACK_HANDLER"] = 'grhttp'
 
 So, we know we _can_, but _should_ we?
 
-There is no simple answer. Using GRHttp through Rack is slower by nature and uses an older (and heavier) server workflow design. on the other hand, if you have an existing application, what is the sense of re-writing all your code?
+There is no simple answer. Using GRHttp through Rack is a bit slower by nature and uses an older (and heavier) server workflow design. on the other hand, if you have an existing application, what is the sense of re-writing all your code?
 
 ### We don't have to decide?!
 
@@ -86,18 +86,20 @@ Although GRHttp\* does more for your application, it still performs quite well a
 
 | Server   | Req/Sec | Remarks |
 |----------|---------|---------|
-| Thin     | 2,755.31 |     |
-| Puma     | 2,906.29 |    |
+| Thin (R) | 2,755.31 |  On Rack   |
+| Thin (N) | 11,388.63|  Native   |
+| Puma (R) | 2,906.29 |  On Rack  |
+| Puma (N) | 9,524.93 |  Native  |
 | Webrick  | 778.56  | Don't use! |
-| Unicorn\*\*| 1,649.20 | Unicorn runs native, not Rack (seems odd) |
-| Passenger\*\*| ~11,095 | Passanger native on nginx, not Rack |
+| Unicorn (N) | 1,649.20 | Unicorn runs native, not Rack |
+| Passenger (N) | ~11,095 | Passanger native on nginx, not Rack |
 |----------|---------|---------|
-| GRHttp (on Rack)| 2,533.06 | Running a Rack app |
-| GRHttp (Native)| 7,725.65 | Running a native app |
+| GRHttp (R)| 2,533.06 | Running a Rack app |
+| GRHttp (N)| 7,725.65 | Running a native app |
 | GRHttp (Hybrid)| 2,356.97(R) | Rack path on the hybrid app above|
 | GRHttp (Hybrid)| 7,835.20(N) | Native path on the hybrid app above|
 
-It should be noted that some of the servers only logged errors while GRHttp logged every request. Disabling the GRHttp logging added approximately a 20% performance boost to the native app.
+It should be noted that some of the servers, such as thin, only logged errors while GRHttp logged every request. Disabling the GRHttp logging added approximately a 20% performance boost to the native app (almost 10K req/sec).
 
 Also, some of the numbers seemed off to me... While the hybrid app ranning a bit faster seems to be a statistical deviation, I have no explanation as to Unicorn's slowness. I suggest you run your own benchmarks.
 
@@ -121,9 +123,7 @@ Benchmarks were executed using `wrk` since not all servers answered `ab` (the is
 
      $ wrk -c400 -d10 -t12 http://localhost:3000/
 
-\*In contrast to other Rack servers, GRHttp parses all of the HTTP request, including a writable cookie-jar, POST data and query string data, available also for Rack apps using the env\['gr.cookies']( env\['pl.cookies'] in older version ) and env\['gr.params']( env\['pl.params'] in older versions).
-
-\*\* Both Passenger and Unicorn run their own processes, they are more 'Rack emulation' than Rack 
+\*In contrast to other Rack servers, GRHttp parses all of the HTTP request, offering you a read/write cookie-jar and parsing both POST data and query string data, available also for Rack apps using the env\['gr.cookies']( env\['pl.cookies'] in older version ) and env\['gr.params']( env\['pl.params'] in older versions).
 
 ## Usage
 
