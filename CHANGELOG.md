@@ -4,6 +4,14 @@
 
 Change log v.0.0.16
 
+**Fix**: Fixed a typo in the GRHttp's Rack variable naming (was `pl.cookies` instead of `gr.cookies`, same issue with `gr.params`).
+
+**Update**: better Rack support.
+
+***
+
+Change log v.0.0.16
+
 **Fix**: GRHttp will better respect requests from HTTP/1 or with the header 'Connection: close'.
 
 ***
