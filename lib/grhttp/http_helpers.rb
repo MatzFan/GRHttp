@@ -104,25 +104,26 @@ module GRHttp
 			begin
 				h = target
 				val = rubyfy! value
-				a = name.split('[')
+				a = name.chomp('[]').split('[')
 				len = a.count - 1
+				p = nil
 				a.each.with_index do |n, i|
 					n.chomp!(']');
 					n.strip!;
+					n = n.empty? ? nil : (n.to_i.to_s == n) ?  n.to_i : n.to_sym
 					if i == len
-						if n.empty?
-							h = (h[n] ||= [])
-							h << val
-						else
-							n = n.to_sym
+						if n
 							if h[n]
 								h[n].is_a?(Array) ? (h[n] << val) : (h[n] = [h[n], val])
 							else
 								h[n] = val
 							end
+						else
+							h = (h[n] ||= [])
+							h << val
 						end
 					else
-						h = ( h[n.to_sym] ||= (n.empty? ? [] : {} ) )
+						h = ( h[n] ||= {} )
 					end
 				end
 				val
@@ -131,17 +132,6 @@ module GRHttp
 				GReactor.error "(Silent): parameters parse error for #{name} ... maybe conflicts with a different set?"
 				target[name] = val
 			end
-			# begin
-			# 	a = target
-			# 	val = rubyfy! value
-			# 	p = name.gsub(']',' ').split(/\[/)
-			# 	p.each_index { |i| p[i].strip! ; n = p[i].match(/^[0-9]+$/) ? p[i].to_i : p[i].to_sym ; p[i+1] ? [ ( a[n] ||= ( p[i+1] == ' ' ? [] : {} ) ), ( a = a[n]) ] : ( a.is_a?(Hash) ? (a[n] ? (a[n].is_a?(Array) ? (a[n] << val) : a[n] = [a[n], val] ) : (a[n] = val) ) : (a << val) ) }
-			# 	val
-			# rescue Exception => e
-			# 	GReactor.error e
-			# 	GReactor.error "(Silent): parameters parse error for #{name} ... maybe conflicts with a different set?"
-			# 	target[name] = val
-			# end
 		end
 
 		protected
@@ -174,7 +164,7 @@ module GRHttp
 
 		# Changes String to a Ruby Object, if it's a special string...
 		def self.rubyfy!(string)
-			return false unless string
+			return string unless string.is_a?(string)
 			try_utf8! string
 			if string == 'true'
 				string = true

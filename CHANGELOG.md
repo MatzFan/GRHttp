@@ -2,6 +2,12 @@
 
 ***
 
+Change log v.0.0.19
+
+**Performance**: Reviewd the code for the params Hash propagation and slightly improved the performance.
+
+***
+
 Change log v.0.0.18
 
 **Fix**: Fixed an issue with the method used to extract data into the params (or cookie) Hash. The issue caused an exception to be raised but the correct value to be placed in the Hash.
