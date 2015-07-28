@@ -100,17 +100,48 @@ module GRHttp
 		end
 
 		# Adds paramaters to a Hash object, according to the GRHttp's server conventions.
-		def self.add_param_to_hash param_name, param_value, target_hash
+		def self.add_param_to_hash name, value, target
 			begin
-				a = target_hash
-				p = param_name.gsub(']',' ').split(/\[/)
-				val = rubyfy! param_value
-				p.each_index { |i| p[i].strip! ; n = p[i].match(/^[0-9]+$/) ? p[i].to_i : p[i].to_sym ; p[i+1] ? [ ( a[n] ||= ( p[i+1] == ' ' ? [] : {} ) ), ( a = a[n]) ] : ( a.is_a?(Hash) ? (a[n] ? (a[n].is_a?(Array) ? (a[n] << val) : a[n] = [a[n], val] ) : (a[n] = val) ) : (a << val) ) }
-			rescue Exception => e
+				h = target
+				val = rubyfy! value
+				a = name.split('[')
+				len = a.count - 1
+				a.each.with_index do |n, i|
+					n.chomp!(']');
+					n.strip!;
+					if i == len
+						if n.empty?
+							h = (h[n] ||= [])
+							h << val
+						else
+							n = n.to_sym
+							if h[n]
+								h[n].is_a?(Array) ? (h[n] << val) : (h[n] = [h[n], val])
+							else
+								h[n] = val
+							end
+						end
+					else
+						h = ( h[n.to_sym] ||= (n.empty? ? [] : {} ) )
+					end
+				end
+				val
+			rescue => e
 				GReactor.error e
-				GReactor.error "(Silent): parameters parse error for #{param_name} ... maybe conflicts with a different set?"
-				target_hash[param_name] = rubyfy! param_value
+				GReactor.error "(Silent): parameters parse error for #{name} ... maybe conflicts with a different set?"
+				target[name] = val
 			end
+			# begin
+			# 	a = target
+			# 	val = rubyfy! value
+			# 	p = name.gsub(']',' ').split(/\[/)
+			# 	p.each_index { |i| p[i].strip! ; n = p[i].match(/^[0-9]+$/) ? p[i].to_i : p[i].to_sym ; p[i+1] ? [ ( a[n] ||= ( p[i+1] == ' ' ? [] : {} ) ), ( a = a[n]) ] : ( a.is_a?(Hash) ? (a[n] ? (a[n].is_a?(Array) ? (a[n] << val) : a[n] = [a[n], val] ) : (a[n] = val) ) : (a << val) ) }
+			# 	val
+			# rescue Exception => e
+			# 	GReactor.error e
+			# 	GReactor.error "(Silent): parameters parse error for #{name} ... maybe conflicts with a different set?"
+			# 	target[name] = val
+			# end
 		end
 
 		protected
@@ -264,10 +295,10 @@ module GRHttp
 				# request[:original_path] = HTTP.decode(m[7], :uri) || '/'
 				# request['host'] ||= "#{request[:host_name]}:#{request[:port]}"
 
-			 	# parse query for params - m[9] is the data part of the query
-			 	# if m[9]
-			 	# 	HTTP.extract_params m[9].split(PARAM_SPLIT_REGX), request[:params]
-			 	# end
+				# parse query for params - m[9] is the data part of the query
+				# if m[9]
+				# 	HTTP.extract_params m[9].split(PARAM_SPLIT_REGX), request[:params]
+				# end
 			# end
 		end
 
