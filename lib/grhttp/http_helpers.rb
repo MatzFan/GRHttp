@@ -164,7 +164,7 @@ module GRHttp
 
 		# Changes String to a Ruby Object, if it's a special string...
 		def self.rubyfy!(string)
-			return string unless string.is_a?(string)
+			return string unless string.is_a?(String)
 			try_utf8! string
 			if string == 'true'
 				string = true
