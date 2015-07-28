@@ -130,7 +130,8 @@ end
 begin
 	require 'rack/handler'
 	Rack::Handler::WEBrick = Rack::Handler.get(:grhttp)
-rescue
+rescue Exception => e
+
 end
 
 ######
