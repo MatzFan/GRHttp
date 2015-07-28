@@ -32,11 +32,8 @@ It's true that we _can_ comfortably use GRHttp as a Rack server - just enter the
 
     $ rackup -s grhttp -p 3000
 
-In Rails, add the `grhttp` gem you your gemfile and add the following to your eviroment.rb file:
+For most frameworks (Rails/Sinatra), you can also add the `grhttp` gem to your gemfile and it will replace WEBrick as the default fallback server.
 
-```ruby
-ENV["RACK_HANDLER"] = 'grhttp'
-```
 ### We _should?_
 
 So, we know we _can_, but _should_ we?
@@ -80,7 +77,7 @@ This is How the [Plezi framework](https://github.com/boazsegev/plezi), which use
 
 ### How does it stack up against other servers?
 
-The greatest sin is believing 'Hello World' apps are a good benchmark - they are NOT. But since they are a simple (albit flawed) way to isolate the server component, here goes...
+The greatest sin is believing 'Hello World' apps are a good benchmark - they are NOT. For instance, replacing my Thin server on a production app with GRHttp had **less then a 4% impact** and added Websockets to the mix... But since "Hello World" apps the common way to isolate the server component, here goes...
 
 Although GRHttp\* does more for your application, it still performs quite well as a Rack server. Here is a quick comparison I ran on my MacBook Pro, on Ruby MRI v. ruby 2.2.2p95:
 
@@ -131,7 +128,7 @@ Benchmarks were executed using `wrk` since not all servers answered `ab` (the is
 
      $ wrk -c400 -d10 -t12 http://localhost:3000/
 
-\*In contrast to other Rack servers, GRHttp parses all of the HTTP request, offering you a read/write cookie-jar and parsing both POST data and query string data, available also for Rack apps using the env\['gr.cookies']( env\['pl.cookies'] in older version ) and env\['gr.params']( env\['pl.params'] in older versions).
+\*In contrast to other Rack servers, GRHttp parses all of the HTTP request, offering you a read/write cookie-jar and parsing both POST data and query string data. The smart `request` and `response` is available to native apps.
 
 ## Usage
 

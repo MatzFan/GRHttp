@@ -6,6 +6,11 @@ Change log v.0.0.19
 
 **Performance**: Reviewd the code for the params Hash propagation and slightly improved the performance.
 
+**Performance**: Reviewd the code for Rack support and delegated more control to Rack (this can also be bad, but it is what it is).
+
+**Settings** Including GRHttp in your gemfile will now automatically replace the Webrick server as the default for Rack. 
+**Deprecation**: For performance reasons, Rack apps will not recieve the writable cookie-jar nor the parsed params priorly available (`gr.cookies` and `gr.params` were not utilized by past working Rack apps and Rack support is meant to help run new code in parallel to existing apps).
+
 ***
 
 Change log v.0.0.18
