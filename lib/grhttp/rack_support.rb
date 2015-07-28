@@ -29,7 +29,7 @@ module GRHttp
 					tmp = tmp.call(request, response)
 					return tmp if tmp
 				end
-				response.quite!
+				# response.quite!
 				response.run_rack @app
 			end
 		end
@@ -42,18 +42,38 @@ module GRHttp
 			res = app.call(rack_env)
 			raise "Rack app returned an unexpected value: #{res.to_s}" unless res && res.is_a?(Array)
 			@status = res[0]
-			#fix cookies
-			# puts res[1]['Set-Cookie'].dump
-			res[1]['X-Rack-Cookies'] = "true\r\nSet-Cookie: " + (res[1].delete('Set-Cookie').split("\n")).join("\r\nSet-Cookie: ") if res[1]['Set-Cookie']
-			res[1].each {|h, v| self[h.dup] = v}
-			# send body using Rack's rendering 
-			unless @request.head?
-				send_headers
-				res[2].each {|d| @io.write d }
-				res[2].close if res[2].respond_to? :close
-				@io.close unless @io[:keep_alive]
-				@finished = true
+			@finished = true
+			@body = nil
+			@headers.clear
+			@headers.freeze
+
+			# fix connection header
+			if res[1]['Connection'].to_s.match(/^k/i) || (@request[:version].to_f > 1 && @request['connection'].nil?) || @request['connection'].to_s.match(/^k/i)
+				@io[:keep_alive] = true
+				res[1]['Connection'] ||= "Keep-Alive\r\nKeep-Alive: timeout=5"
 			end
+
+			# @io[:keep_alive] = true if res[1]['Connection'].to_s.match(/^k/i)
+			# res[1]['Connection'] ||= "close"
+
+			# Send Rack's headers
+			out = ''
+			out << "#{@http_version} #{@status} #{STATUS_CODES[@status] || 'unknown'}\r\n" #"Date: #{Time.now.httpdate}\r\n"
+			out << ('Set-Cookie: ' + (res[1].delete('Set-Cookie').split("\n")).join("\r\nSet-Cookie: ") + "\r\n") if res[1]['Set-Cookie']
+			res[1].each {|h, v| out << "#{h.to_s}: #{v}\r\n"}
+
+			# GR.log_raw out
+			# puts @request.to_s
+			# puts "Will close: #{(!@io[:keep_alive]).to_s}\n\n"
+
+			out << "\r\n"
+			@io.write out
+			out.clear
+
+			# send body using Rack's rendering 
+			res[2].each {|d| @io.write d }
+			res[2].close if res[2].respond_to? :close
+			@io.close unless @io[:keep_alive]
 		end
 		protected
 		HASH_SYM_PROC = Proc.new {|h,k| k = (Symbol === k ? k.to_s : k.to_s.to_sym); h.has_key?(k) ? h[k] : (h["gr.#{k.to_s}"] if h.has_key?("gr.#{k.to_s}") ) }
@@ -80,8 +100,8 @@ module GRHttp
 			'REQUEST_URI'		=> :query,
 			'SERVER_PORT'		=> :port,
 			'REMOTE_ADDR'		=> :client_ip,
-			'gr.params'			=> :params,
-			'gr.cookies'		=> :cookies,
+			# 'gr.params'			=> :params,
+			# 'gr.cookies'		=> :cookies,
 			'REQUEST_METHOD'	=> :method,
 			'rack.url_scheme'	=> :requested_protocol,
 			'rack.input'		=> :rack_input
@@ -100,11 +120,18 @@ module GRHttp
 			'rack.run_once'		=> false
 		}
 		RACK_DICTIONARY['rack.version'] = ::Rack.version.split('.') if defined?(::Rack)
-
 	end
 
 end
 
+# ENV["RACK_HANDLER"] = 'grhttp'
+
+# make GRHttp the default fallback position for Rack.
+begin
+	require 'rack/handler'
+	Rack::Handler::WEBrick = Rack::Handler.get(:grhttp)
+rescue
+end
 
 ######
 ## example requests
