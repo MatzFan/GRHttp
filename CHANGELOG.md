@@ -11,6 +11,8 @@ Change log v.0.0.19
 **Settings** Including GRHttp in your gemfile will now automatically replace the Webrick server as the default for Rack. 
 **Deprecation**: For performance reasons, Rack apps will not recieve the writable cookie-jar nor the parsed params priorly available (`gr.cookies` and `gr.params` were not utilized by past working Rack apps and Rack support is meant to help run new code in parallel to existing apps).
 
+**Fix**: Fixed an issue with the response's logging, which prevented the response time (in miliseconds) from printing out response times less then a milisecond.
+
 ***
 
 Change log v.0.0.18
