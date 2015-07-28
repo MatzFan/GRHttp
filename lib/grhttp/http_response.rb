@@ -297,12 +297,13 @@ module GRHttp
 		def send_headers
 			return false if @headers.frozen?
 			fix_cookie_headers
-			@headers['cache-control'] ||= 'no-cache'
+			@headers['cache-control'] ||= 'no-cache, max-age=0, private, must-revalidate'
 			out = ''
 
 			out << "#{@http_version} #{@status} #{STATUS_CODES[@status] || 'unknown'}\r\nDate: #{Time.now.httpdate}\r\n"
 
-			unless @headers['connection'] || (@request[:version].to_f <= 1 && (@request['connection'].nil? || !@request['connection'].match(/^k/i))) || (@request['connection'] && @request['connection'].match(/^c/i))
+			# unless @headers['connection'] || (@request[:version].to_f <= 1 && (@request['connection'].nil? || !@request['connection'].match(/^k/i))) || (@request['connection'] && @request['connection'].match(/^c/i))
+			if (@request[:version].to_f > 1 && @request['connection'].nil?) || @request['connection'].to_s.match(/^k/i) || (@headers['connection'] && @headers['connection'].match(/^k/i)) # simpler
 				@io[:keep_alive] = true
 				out << "Connection: Keep-Alive\r\nKeep-Alive: timeout=5\r\n"
 			else
