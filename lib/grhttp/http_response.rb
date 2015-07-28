@@ -275,7 +275,9 @@ module GRHttp
 		protected
 
 		def finished_log
-			GReactor.log_raw("#{@request[:client_ip]} [#{Time.now.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:requested_protocol]}\/#{@request[:version]}\" #{@status} #{bytes_sent.to_s} #{"%i" % ((Time.now - @request[:time_recieved])*1000)}ms\n").clear unless @quite# %0.3f
+			return if @quite
+			t_n = Time.now
+			GReactor.log_raw("#{@request[:client_ip]} [#{t_n.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:requested_protocol]}\/#{@request[:version]}\" #{@status} #{bytes_sent.to_s} #{((t_n - @request[:time_recieved])*1000).round(2)}ms\n").clear # %0.3f
 		end
 
 		# Danger Zone (internally used method, use with care): fix response's headers before sending them (date, connection and transfer-coding).
@@ -297,7 +299,6 @@ module GRHttp
 		def send_headers
 			return false if @headers.frozen?
 			fix_cookie_headers
-			@headers['cache-control'] ||= 'no-cache, max-age=0, private, must-revalidate'
 			out = ''
 
 			out << "#{@http_version} #{@status} #{STATUS_CODES[@status] || 'unknown'}\r\nDate: #{Time.now.httpdate}\r\n"
@@ -317,6 +318,7 @@ module GRHttp
 				out << "Transfer-Encoding: chunked\r\n"
 			end
 			@headers.each {|k,v| out << "#{k.to_s}: #{v}\r\n"}
+			out << "Cache-Control: max-age=0, no-cache\r\n" unless @headers['cache-control']
 			@cookies.each {|k,v| out << "Set-Cookie: #{k.to_s}=#{v.to_s}\r\n"}
 			out << "\r\n"
 
