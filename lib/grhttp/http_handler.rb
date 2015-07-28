@@ -33,9 +33,9 @@ module GRHttp
 								response.try_finish
 							end							
 						rescue => e
+							GReactor.error e
 							response = HTTPResponse.new request, 500, {}, HTTPResponse::STATUS_CODES[500]
 							response.try_finish
-							GReactor.error e
 						end
 					end
 				end
