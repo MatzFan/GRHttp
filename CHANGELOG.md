@@ -2,6 +2,15 @@
 
 ***
 
+Change log v.0.0.20
+
+**Session support**: Basic serverside session support for memory stored session data is now integrated into the response object (which sets the session ID). It's easy to replace the memory session storage with a session storage object that supports DB/File storage by providing a compatible Session Storage object that andwers `fetch` and `store`.
+
+**WS Client** Added the `closed?` method, to check if the websocket connection is still open.
+
+**Fix**: Header and cookie values were saved with the newline marker. This is now fixed by striping the newline marker between HTTP headers.
+***
+
 Change log v.0.0.19
 
 **Performance**: Reviewd the code for the params Hash propagation and slightly improved the performance.
