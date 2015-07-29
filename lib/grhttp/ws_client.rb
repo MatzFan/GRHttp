@@ -52,6 +52,11 @@ module GRHttp
 			@response.close if @response
 		end
 
+		# checks if the socket is open (if the websocket was terminated abnormally, this might returs true when it should be false).
+		def closed?
+			@response.io.closed?
+		end
+
 		# Create a simple Websocket Client(!)
 		#
 		# This method accepts two parameters:
