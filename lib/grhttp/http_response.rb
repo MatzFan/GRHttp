@@ -90,6 +90,23 @@ module GRHttp
 			GReactor.queue [block], @stream_proc
 		end
 
+		# Creates and returns the session storage object.
+		#
+		# By default and for security reasons, session id's created on a secure connection will NOT be available on a non secure connection (SSL/TLS).
+		#
+		# Since this method renews the session_id's cookie's validity (update's it's times-stump), it must be called for the first time BEFORE the headers are sent.
+		#
+		# After the session object was created using this method call, it should be safe to continue updating the session data even after the headers were sent and this method would act as an accessor for the already existing session object.
+		#
+		# @return [Hash like storage] creates and returns the session storage object with all the data from a previous connection.
+		def session
+			return @session if @session
+			id = request.cookies[GRHttp.session_token.to_sym] || SecureRandom.uuid
+			id.strip!
+			set_cookie GRHttp.session_token, id, expires: (Time.now+86_400), secure:  @request.ssl?
+			@session = GRHttp::SessionManager.get id
+		end
+
 		# Returns a writable combined hash of the request's cookies and the response cookie values.
 		#
 		# Any cookies writen to this hash (`response.cookies[:name] = value` will be set using default values).
@@ -127,6 +144,7 @@ module GRHttp
 		# see HTTP response headers for valid headers and values: http://en.wikipedia.org/wiki/List_of_HTTP_header_fields
 		def []= header, value
 			raise 'Cannot set headers after the headers had been sent.' if headers_sent?
+			return (@headers.delete(header) && nil) if header.nil?
 			header.is_a?(String) ? header.downcase! : (header.is_a?(Symbol) ? (header = header.to_s.downcase.to_sym) : (return false))
 			headers[header]	= value
 		end
@@ -155,7 +173,7 @@ module GRHttp
 			value ||= 'deleted'
 			params[:expires] ||= (Time.now + 315360000) unless params[:max_age]
 			params[:path] ||= '/'
-			value = HTTP.encode(value.to_s)
+			value = HTTP.encode(value.to_s.dup)
 			if params[:max_age]
 				value << ('; Max-Age=%s' % params[:max_age])
 			else

@@ -12,6 +12,7 @@ require "grhttp/http_helpers"
 require "grhttp/http_handler"
 
 require "grhttp/http_cookies"
+require "grhttp/session"
 
 
 require "grhttp/ws_handler"
