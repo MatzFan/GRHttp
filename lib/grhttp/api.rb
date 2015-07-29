@@ -50,6 +50,13 @@ module GRHttp
 		Base::WSHandler.message_size_limit
 	end
 
+	def session_token
+		@session_token ||= SecureRandom.uuid
+	end
+	def session_token= value
+		@session_token = value
+	end
+
 	protected
 
 	REACTOR_METHODS = GReactor.public_methods(false)
