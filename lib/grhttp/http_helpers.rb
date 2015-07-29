@@ -189,7 +189,7 @@ module GRHttp
 				if header.match EOHEADERS
 					request[:headers_complete] = true
 				else
-					m = header.split /\:[\s]*/ , 2
+					m = header.strip.split /\:[\s]*/ , 2
 					m[0].downcase! if m[0]
 					if m[0] == 'cookie'
 						# save cookies for Rack, if applicable
