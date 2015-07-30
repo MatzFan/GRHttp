@@ -10,6 +10,8 @@ Change log v.0.0.20
 
 **Fix**: Cookie values were saved in the cookie-jar with the newline marker. This is now fixed by striping the newline marker between HTTP all headers prior to processing.
 
+**Fix**: minor HTTP parsing fixes for performance enhancement introduced in v.0.0.19.
+
 ***
 
 Change log v.0.0.19
