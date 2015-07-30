@@ -4,7 +4,7 @@
 
 Change log v.0.0.20
 
-**Session support**: Basic serverside session support for memory stored session data is now integrated into the response object (which sets the session ID). It's easy to replace the memory session storage with a session storage object that supports DB/File storage by providing a compatible Session Storage object that andwers `fetch` and `store`.
+**Session support**: Basic serverside session support for memory stored session data is now integrated into the response object (which sets the session ID). It's easy to replace the memory session storage with a session storage object that supports DB/File storage by providing a compatible Session Storage object that andwers to `fetch(id)` and returns a self managing Hash like Session Object.
 
 **WS Client** Added the `closed?` method, to check if the websocket connection is still open.
 

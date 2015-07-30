@@ -13,15 +13,14 @@ module GRHttp
 		def get id
 			storage.fetch(id)
 		end
-		# stores a session object
-		def store id, session_object
-			storage.store id, session_object
-		end
 		# Sets the session storage object, to allow for different storage systems.
 		#
-		# A Session Storage object must answer only two methods:
+		# A Session Storage object must answer only one methods:
 		# fetch(id):: returns a Hash like session object with all the session's data or a fresh session object if the session object did not exist before
-		# store(id):: stores the session object, with all it's data AND returns the same session object.
+		#
+		# The Session Object should update itself in the storage whenever data is saved to the session Object.
+		# This is important also because websocket 'session' could exist simultaneously with other HTTP requests and the data should be kept updated at all times.
+		# If there are race conditions that apply for multi-threading / multi processing, the Session Object should manage them as well as possible.
 		def storage= session_storage
 			@storage = session_storage
 		end
