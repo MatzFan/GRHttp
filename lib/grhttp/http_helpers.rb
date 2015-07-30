@@ -149,7 +149,7 @@ module GRHttp
 		def self.extract_params data, target_hash
 			data.each do |set|
 				list = set.split('=', 2)
-				list.each {|s| if s; s.gsub!('+', '%20'); s.gsub!(/\%[0-9a-fA-F][0-9a-fA-F]/) {|m| m[1..2].to_i(16).chr}; end}
+				list.each {|s|  next unless s; s.gsub!('+', '%20'); s.gsub!(/\%[0-9a-f]{2}/i) {|m| m[1..2].to_i(16).chr}; s.gsub!(/&#[0-9]{4};/i) {|m| [m[2..5].to_i].pack 'U' }}
 				add_param_to_hash list.shift, list.shift, target_hash
 			end
 		end
@@ -157,11 +157,10 @@ module GRHttp
 		def self.extract_header data, target_hash
 			data.each do |set|
 				list = set.split('=', 2)
-				list.each {|s| s.gsub!(/\%([0-9a-f]){2}/i) {|m| m[1..2].to_i(16).chr} if s}
+				list.each {|s| next unless s; s.gsub!(/\%[0-9a-f]{2}/i) {|m| m[1..2].to_i(16).chr}; s.gsub!(/&#[0-9]{4};/i) {|m| [m[2..5].to_i].pack 'U' }}
 				add_param_to_hash list.shift, list.shift, target_hash
 			end
 		end
-
 		# Changes String to a Ruby Object, if it's a special string...
 		def self.rubyfy!(string)
 			return string unless string.is_a?(String)
@@ -299,7 +298,7 @@ module GRHttp
 			# parse content
 			case request['content-type'].to_s
 			when /x-www-form-urlencoded/
-				HTTP.extract_params request.delete(:body).split(/[&;]/), request[:params], :form # :uri
+				HTTP.extract_params request.delete(:body).split(/[&;]/), request[:params] #, :form # :uri
 			when /multipart\/form-data/
 				_read_multipart request, request, request.delete(:body)
 			when /text\/xml/
@@ -352,7 +351,7 @@ module GRHttp
 
 			cd = {}
 
-			HTTP.extract_header headers['content-disposition'].match(/[^;];([^\r\n]*)/)[1].split(/[;,][\s]?/), cd, :uri
+			HTTP.extract_header headers['content-disposition'].match(/[^;];([^\r\n]*)/)[1].split(/[;,][\s]?/), cd
 
 			name = name_prefix.dup
 
