@@ -2,6 +2,12 @@
 
 ***
 
+Change log v.0.0.21
+
+**Fix**: Fixed an issue with Firefox's implementation of Websockets, which sends a connection string that includes both the `keep-alive` and the `upgrade` directives (the standard is to only send the `upgrade` directive).
+
+***
+
 Change log v.0.0.20
 
 **Session support**: Basic serverside session support for memory stored session data is now integrated into the response object (which sets the session ID). It's easy to replace the memory session storage with a session storage object that supports DB/File storage by providing a compatible Session Storage object that andwers to `fetch(id)` and returns a self managing Hash like Session Object.

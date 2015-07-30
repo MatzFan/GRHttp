@@ -72,12 +72,7 @@ module GRHttp
 			end
 
 			def is_valid_request? request, response
-				return true if request['upgrade'].to_s.downcase == 'websocket' && 
-										request['sec-websocket-key'] &&
-										request['connection'].to_s.downcase == 'upgrade' &&
-										# (request['sec-websocket-extensions'].split(/[\s]*[,][\s]*/).reject {|ex| ex == '' || SUPPORTED_EXTENTIONS[ex.split(/[\s]*;[\s]*/)[0]] } ).empty? &&
-										(request['sec-websocket-version'].to_s.downcase.split(/[, ]/).map {|s| s.strip} .include?( '13' ))
-
+				return true if request.upgrade?
 				refuse response
 			end
 
