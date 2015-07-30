@@ -201,7 +201,7 @@ module GRHttp
 						HTTP.extract_header m[1].split(HEADER_SPLIT_REGX), request.cookies
 					elsif m[1]
 						HTTP.make_utf8!(m[0])
-						HTTP.make_utf8!(m[1].rstrip! || m[1])
+						HTTP.make_utf8!(m[1])
 						request[ m[0] ] ? (request[ m[0] ] << ", #{m[1]}") : (request[ m[0] ] = m[1])
 					end
 				end

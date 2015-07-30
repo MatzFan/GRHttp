@@ -102,7 +102,6 @@ module GRHttp
 		def session
 			return @session if @session
 			id = request.cookies[GRHttp.session_token.to_sym] || SecureRandom.uuid
-			id.strip!
 			set_cookie GRHttp.session_token, id, expires: (Time.now+86_400), secure:  @request.ssl?
 			@session = GRHttp::SessionManager.get id
 		end

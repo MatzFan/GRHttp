@@ -8,7 +8,8 @@ Change log v.0.0.20
 
 **WS Client** Added the `closed?` method, to check if the websocket connection is still open.
 
-**Fix**: Header and cookie values were saved with the newline marker. This is now fixed by striping the newline marker between HTTP headers.
+**Fix**: Cookie values were saved in the cookie-jar with the newline marker. This is now fixed by striping the newline marker between HTTP all headers prior to processing.
+
 ***
 
 Change log v.0.0.19
