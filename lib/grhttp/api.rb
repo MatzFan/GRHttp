@@ -50,9 +50,11 @@ module GRHttp
 		Base::WSHandler.message_size_limit
 	end
 
+	# Returns the server's session's token name
 	def session_token
 		@session_token ||= SecureRandom.uuid
 	end
+	# Sets the server's session's token name
 	def session_token= value
 		@session_token = value
 	end
