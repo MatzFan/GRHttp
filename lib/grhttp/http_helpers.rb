@@ -102,28 +102,31 @@ module GRHttp
 		# Adds paramaters to a Hash object, according to the GRHttp's server conventions.
 		def self.add_param_to_hash name, value, target
 			begin
-				h = target
+				c = target
 				val = rubyfy! value
 				a = name.chomp('[]').split('[')
-				len = a.count - 1
-				p = nil
-				a.each.with_index do |n, i|
+
+				a[0...-1].inject(target) do |h, n|
 					n.chomp!(']');
 					n.strip!;
-					n = n.empty? ? nil : (n.to_i.to_s == n) ?  n.to_i : n.to_sym
-					if i == len
-						if n
-							if h[n]
-								h[n].is_a?(Array) ? (h[n] << val) : (h[n] = [h[n], val])
-							else
-								h[n] = val
-							end
-						else
-							h = (h[n] ||= [])
-							h << val
-						end
+					raise "malformed parameter name for #{name}" if n.empty?
+					n = (n.to_i.to_s == n) ?  n.to_i : n.to_sym            
+					c = (h[n] ||= {})
+				end
+				n = a.last
+				n.chomp!(']'); n.strip!;
+				n = n.empty? ? nil : ( (n.to_i.to_s == n) ?  n.to_i : n.to_sym )
+				if n
+					if c[n]
+						c[n].is_a?(Array) ? (c[n] << val) : (c[n] = [c[n], val])
 					else
-						h = ( h[n] ||= {} )
+						c[n] = val
+					end
+				else
+					if c[n]
+						c[n].is_a?(Array) ? (c[n] << val) : (c[n] = [c[n], val])
+					else
+						c[n] = [val]
 					end
 				end
 				val
@@ -132,6 +135,37 @@ module GRHttp
 				GReactor.error "(Silent): parameters parse error for #{name} ... maybe conflicts with a different set?"
 				target[name] = val
 			end
+			# begin
+			# 	h = target
+			# 	val = rubyfy! value
+			# 	a = name.chomp('[]').split('[')
+			# 	len = a.count - 1
+			# 	p = nil
+			# 	a.each.with_index do |n, i|
+			# 		n.chomp!(']');
+			# 		n.strip!;
+			# 		n = n.empty? ? nil : (n.to_i.to_s == n) ?  n.to_i : n.to_sym
+			# 		if i == len
+			# 			if n
+			# 				if h[n]
+			# 					h[n].is_a?(Array) ? (h[n] << val) : (h[n] = [h[n], val])
+			# 				else
+			# 					h[n] = val
+			# 				end
+			# 			else
+			# 				h = (h[n] ||= [])
+			# 				h << val
+			# 			end
+			# 		else
+			# 			h = ( h[n] ||= {} )
+			# 		end
+			# 	end
+			# 	val
+			# rescue => e
+			# 	GReactor.error e
+			# 	GReactor.error "(Silent): parameters parse error for #{name} ... maybe conflicts with a different set?"
+			# 	target[name] = val
+			# end
 		end
 
 		protected
