@@ -2,6 +2,12 @@
 
 ***
 
+Change log v.0.0.22
+
+**Feature**: Added custom header options for basic cookie support and HTTP variables/authentication for the websocket client.
+
+***
+
 Change log v.0.0.21
 
 **Fix**: Fixed an issue with Firefox's implementation of Websockets, which sends a connection string that includes both the `keep-alive` and the `upgrade` directives (the standard is to only send the `upgrade` directive).
