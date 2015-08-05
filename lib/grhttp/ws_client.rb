@@ -57,12 +57,27 @@ module GRHttp
 			@response.io.closed?
 		end
 
+		# return the HTTP's handshake data, including any cookies sent by the server.
+		def request
+			@request
+		end
+		# return a Hash with the HTTP cookies recieved during the HTTP's handshake.
+		def cookies
+			@request.cookies
+		end
+
 		# Create a simple Websocket Client(!)
 		#
 		# This method accepts two parameters:
 		# url:: a String representing the URL of the websocket. i.e.: 'ws://foo.bar.com:80/ws/path'
 		# options:: a Hash with options to be used. The options will be used to define the connection's details (i.e. ssl etc') and the Websocket callbacks (i.e. on_open(ws), on_close(ws), on_message(ws))
 		# &block:: an optional block that accepts one parameter (data) and will be used as the `#on_message(data)`
+		#
+		# Acceptable options are:
+		# on_open:: the on_open callback. Must be an objects that answers `call(ws)`, usually a Proc.
+		# on_message:: the on_message callback. Must be an objects that answers `call(ws)`, usually a Proc.
+		# on_close:: the on_close callback. Must be an objects that answers `call(ws)`, usually a Proc.
+		# headers:: a Hash of custom HTTP headers to be sent with the request. Header data should be correctly encoded,
 		#
 		# The method will either return a WebsocketClient instance object or it will raise an exception.
 		#
@@ -109,9 +124,14 @@ module GRHttp
 			socket = TCPSocket.new(url.host, url.port)
 			io = options[:io] = connection_type.new(socket, options)
 
+			# prep custom headers
+			custom_headers = ''
+			custom_headers = options[:headers] if options[:headers].is_a?(String)
+			options[:headers].each {|k, v| custom_headers << "#{k}: #{v}\r\n"} if options[:headers].is_a?(Hash)
+
 			# send protocol upgrade request
 			websocket_key = [(Array.new(16) {rand 255} .pack 'c*' )].pack('m0*')
-			io.write "GET #{url.path}#{url.query.to_s.empty? ? '' : ('?' + url.query)} HTTP/1.1\r\nHost: #{url.host}#{url.port ? (':'+url.port.to_s) : ''}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nOrigin: #{options[:ssl_client] ? 'https' : 'http'}://#{url.host}\r\nSec-WebSocket-Key: #{websocket_key}\r\nSec-WebSocket-Version: 13\r\n\r\n"
+			io.write "GET #{url.path}#{url.query.to_s.empty? ? '' : ('?' + url.query)} HTTP/1.1\r\nHost: #{url.host}#{url.port ? (':'+url.port.to_s) : ''}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nOrigin: #{options[:ssl_client] ? 'https' : 'http'}://#{url.host}\r\nSec-WebSocket-Key: #{websocket_key}\r\nSec-WebSocket-Version: 13\r\n#{custom_headers}\r\n"
 			# wait for answer - make sure we don't over-read
 			# (a websocket message might be sent immidiately after connection is established)
 			reply = ''
