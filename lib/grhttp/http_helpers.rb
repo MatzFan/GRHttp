@@ -39,7 +39,7 @@ module GRHttp
 				case decode_method
 				when :form
 					object.gsub!('+', '%20')
-					object.gsub!(/\%[0-9a-fA-F][0-9a-fA-F]/) {|m| m[1..2].to_i(16).chr}					
+					object.gsub!(/\%[0-9a-fA-F][0-9a-fA-F]/) {|m| m[1..2].to_i(16).chr}
 				when :uri, :url
 					object.gsub!(/\%[0-9a-fA-F][0-9a-fA-F]/) {|m| m[1..2].to_i(16).chr}
 				when :html
@@ -74,7 +74,7 @@ module GRHttp
 				case decode_method
 				when :uri, :url, :form
 					object.force_encoding 'binary'
-					object.gsub!(/[^a-zA-Z0-9\*\.\_\-]/) {|m| m.ord <= 16 ? "%0#{m.ord.to_s(16)}" : "%#{m.ord.to_s(16)}"}
+					object.gsub!(/[^a-zA-Z0-9\*\.\_\-]/) {|m| '%%%02x' % m.ord }
 				when :html
 					object.gsub!('&', '&amp;')
 					object.gsub!('"', '&quot;')
@@ -97,6 +97,10 @@ module GRHttp
 			else
 				raise "GReactor Raising Hell (don't misuse us)!"
 			end
+		end
+
+		def self.encode_url str
+			str.to_s.b.gsub(/[^a-z0-9\*\.\_\-]/i) {|m| '%%%02x' % m.ord }
 		end
 
 		# Adds paramaters to a Hash object, according to the GRHttp's server conventions.

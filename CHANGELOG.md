@@ -4,7 +4,9 @@
 
 Change log v.0.0.22
 
-**Feature**: Added custom header options for basic cookie support and HTTP variables/authentication for the websocket client.
+**Feature**: General Websocket client (GRHttp::WSClient) improvements. i.e., added custom header options for basic cookie support and HTTP variables/authentication for the websocket client's handshake.
+
+**Cookie errors**: GRHttp will now raise an error if an illegal cookie name is attempted.
 
 ***
 

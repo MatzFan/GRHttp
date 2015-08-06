@@ -12,9 +12,22 @@ module GRHttp
 			@request = request
 			params = request.io.params
 			@on_message = params[:on_message]
-			raise "Websocket client must have an #on_message Proc." unless @on_message && @on_message.is_a?(Proc)
+			raise "Websocket client must have an #on_message Proc or handler." unless @on_message && @on_message.respond_to?(:call)
 			@on_open = params[:on_open]
 			@on_close = params[:on_close]
+		end
+
+		def on event_name, &block
+			return false unless block
+			case event_name
+			when :message
+				@on_message = block
+			when :close
+				@on_close = block
+			when :open
+				raise 'The on_open even is invalid at this point.'
+			end
+										
 		end
 
 		def on_message(ws = nil, &block)
@@ -27,7 +40,8 @@ module GRHttp
 
 		def on_open(ws = nil, &block)
 			unless ws
-				@on_open = block if block
+				raise 'The on_open even is invalid at this point.' if block
+				# @on_open = block if block
 				return @on_open
 			end
 			@response = ws
@@ -42,10 +56,14 @@ module GRHttp
 			instance_exec( ws, &@on_close) if @on_close
 		end
 
-		# sends data through the socket. a shortcut for ws_client.response <<
+		# Sends data through the socket. a shortcut for ws_client.response <<
+		#
+		# @return [true, false] Returns the true if the data was actually sent or nil if no data was sent.
 		def << data
+			# raise 'Cannot send data when the connection is closed.' if closed?
 			@response << data
 		end
+		alias :write :<<
 
 		# closes the connection, if open
 		def close
@@ -54,7 +72,7 @@ module GRHttp
 
 		# checks if the socket is open (if the websocket was terminated abnormally, this might returs true when it should be false).
 		def closed?
-			@response.io.closed?
+			@response.io.io.closed?
 		end
 
 		# return the HTTP's handshake data, including any cookies sent by the server.
@@ -66,7 +84,18 @@ module GRHttp
 			@request.cookies
 		end
 
-		# Create a simple Websocket Client(!)
+		# Asynchronously connects to a websocket server.
+		#
+		# @return [true] this method always returns true or raises an exception if no block or :on_message handler were present (see the {WSClient.connect} method for more details).
+		def self.async_connect url, options={}, &block
+			GReactor.start unless GReactor.running?
+			options[:on_message] ||= block
+			raise "No #on_message handler defined! please pass a block or define an #on_message handler!" unless options[:on_message]
+			GReactor.run_async { connect url, options }
+			true
+		end
+
+		# Create a simple Websocket Client(!). This will implicitly start the IO reactor pattern.
 		#
 		# This method accepts two parameters:
 		# url:: a String representing the URL of the websocket. i.e.: 'ws://foo.bar.com:80/ws/path'
@@ -77,9 +106,10 @@ module GRHttp
 		# on_open:: the on_open callback. Must be an objects that answers `call(ws)`, usually a Proc.
 		# on_message:: the on_message callback. Must be an objects that answers `call(ws)`, usually a Proc.
 		# on_close:: the on_close callback. Must be an objects that answers `call(ws)`, usually a Proc.
-		# headers:: a Hash of custom HTTP headers to be sent with the request. Header data should be correctly encoded,
+		# headers:: a Hash of custom HTTP headers to be sent with the request. Header data, including cookie headers, should be correctly encoded.
+		# cookies:: a Hash of cookies to be sent with the request. cookie data will be encoded before being sent.
 		#
-		# The method will either return a WebsocketClient instance object or it will raise an exception.
+		# The method will block until the connection is established. The method will either return a WebsocketClient instance object or raise an exception it the connection was unsuccessful.
 		#
 		# An on_message Proc must be defined, or the method will fail.
 		#
@@ -106,7 +136,8 @@ module GRHttp
 		#
 		# !!please be aware that the Websockt Client will not attempt to verify SSL certificates,
 		# so that even SSL connections are subject to a possible man in the middle attack.
-		def self.connect_to url, options={}, &block
+		def self.connect url, options={}, &block
+			GReactor.start unless GReactor.running?
 			socket = nil
 			options[:on_message] ||= block
 			raise "No #on_message handler defined! please pass a block or define an #on_message handler!" unless options[:on_message]
@@ -127,7 +158,9 @@ module GRHttp
 			# prep custom headers
 			custom_headers = ''
 			custom_headers = options[:headers] if options[:headers].is_a?(String)
-			options[:headers].each {|k, v| custom_headers << "#{k}: #{v}\r\n"} if options[:headers].is_a?(Hash)
+			options[:headers].each {|k, v| custom_headers << "#{k.to_s}: #{v.to_s}\r\n"} if options[:headers].is_a?(Hash)
+			options[:cookies].each {|k, v| custom_headers << "Cookie: #{ HTTP.encode_url k }=#{ HTTP.encode_url v }\r\n"} if options[:cookies].is_a?(Hash)
+			puts custom_headers
 
 			# send protocol upgrade request
 			websocket_key = [(Array.new(16) {rand 255} .pack 'c*' )].pack('m0*')
@@ -169,7 +202,9 @@ module GRHttp
 				socket.close if socket
 				raise e
 		end
-
+		class << self
+			alias :connect_to :connect
+		end
 	end
 end
 

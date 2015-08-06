@@ -168,11 +168,13 @@ module GRHttp
 		#
 		def set_cookie name, value, params = {}
 			raise 'Cannot set cookies after the headers had been sent.' if headers_sent?
+			name = name.to_s
+			raise 'Illegal cookie name' if name.match(/[\x00-\x20\(\)<>@,;:\\\"\/\[\]\?\=\{\}\s]/)
 			params[:expires] = (Time.now - 315360000) unless value
 			value ||= 'deleted'
 			params[:expires] ||= (Time.now + 315360000) unless params[:max_age]
 			params[:path] ||= '/'
-			value = HTTP.encode(value.to_s.dup)
+			value = HTTP.encode_url(value)
 			if params[:max_age]
 				value << ('; Max-Age=%s' % params[:max_age])
 			else
@@ -182,7 +184,7 @@ module GRHttp
 			value << "; Domain=#{params[:domain]}" if params[:domain]
 			value << '; Secure' if params[:secure]
 			value << '; HttpOnly' if params[:http_only]
-			@cookies[HTTP.encode(name.to_s).to_sym] = value
+			@cookies[name.to_sym] = value
 		end
 
 		# deletes a cookie (actually calls `set_cookie name, nil`)

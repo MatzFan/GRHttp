@@ -103,8 +103,7 @@ module GRHttp
 					header << [byte_size].pack('Q>')
 				end
 				io.write header
-				io.write data
-				true
+				io.write(data) && true
 			end
 			# # Formats the data as one or more WebSocket frames.
 			# def frame_data io, data, op_code = nil, fin = true
