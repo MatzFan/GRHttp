@@ -100,7 +100,8 @@ module GRHttp
 		end
 
 		def self.encode_url str
-			str.to_s.b.gsub(/[^a-z0-9\*\.\_\-]/i) {|m| '%%%02x' % m.ord }
+			str.to_s.dup.force_encoding('binary').gsub(/[^a-z0-9\*\.\_\-]/i) {|m| '%%%02x' % m.ord }
+			# str.to_s.b.gsub(/[^a-z0-9\*\.\_\-]/i) {|m| '%%%02x' % m.ord }
 		end
 
 		# Adds paramaters to a Hash object, according to the GRHttp's server conventions.
