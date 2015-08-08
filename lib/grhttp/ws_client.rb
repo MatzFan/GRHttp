@@ -108,8 +108,9 @@ module GRHttp
 		# on_close:: the on_close callback. Must be an objects that answers `call(ws)`, usually a Proc.
 		# headers:: a Hash of custom HTTP headers to be sent with the request. Header data, including cookie headers, should be correctly encoded.
 		# cookies:: a Hash of cookies to be sent with the request. cookie data will be encoded before being sent.
+		# timeout:: the number of seconds to wait before the connection is established. Defaults to 5 seconds.
 		#
-		# The method will block until the connection is established. The method will either return a WebsocketClient instance object or raise an exception it the connection was unsuccessful.
+		# The method will block until the connection is established or until 5 seconds have passed (the timeout). The method will either return a WebsocketClient instance object or raise an exception it the connection was unsuccessful.
 		#
 		# An on_message Proc must be defined, or the method will fail.
 		#
@@ -136,6 +137,7 @@ module GRHttp
 		#
 		# !!please be aware that the Websockt Client will not attempt to verify SSL certificates,
 		# so that even SSL connections are subject to a possible man in the middle attack.
+		# @return [GRHttp::WSClient] this method returns the connected {GRHttp::WSClient} or raises an exception if something went wrong (such as a connection timeout).
 		def self.connect url, options={}, &block
 			GReactor.start unless GReactor.running?
 			socket = nil
@@ -169,14 +171,14 @@ module GRHttp
 			# (a websocket message might be sent immidiately after connection is established)
 			reply = ''
 			reply.force_encoding('binary')
-			start_time = Time.now
+			stop_time = Time.now + (options[:timeout] || 5)
 			stop_reply = "\r\n\r\n"
 			sleep 0.2
 			until reply[-4..-1] == stop_reply
 				add = io.read(1)
 				add ? (reply << add) : (sleep 0.2)
 				raise "connections was closed" if io.io.closed?
-				raise "Websocket client handshake timed out (HTTP reply not recieved)\n\n Got Only: #{reply}" if Time.now >= (start_time + 5)
+				raise "Websocket client handshake timed out (HTTP reply not recieved)\n\n Got Only: #{reply}" if Time.now >= stop_time
 			end
 			# review reply
 			raise "Connection Refused. Reply was:\r\n #{reply}" unless reply.lines[0].match(/^HTTP\/[\d\.]+ 101/i)
