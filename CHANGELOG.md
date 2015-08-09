@@ -2,6 +2,14 @@
 
 ***
 
+Change log v.0.0.23
+
+**Fix**: fixed cookie name requirements for the WSClient.
+
+**API**: added  `ws_connect` API for quick access to the WSClient.connect.
+
+***
+
 Change log v.0.0.22
 
 **Feature**: General Websocket client (GRHttp::WSClient) improvements. i.e., added custom header options for basic cookie support and HTTP variables/authentication for the websocket client's handshake.

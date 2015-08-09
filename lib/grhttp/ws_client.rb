@@ -161,7 +161,7 @@ module GRHttp
 			custom_headers = ''
 			custom_headers = options[:headers] if options[:headers].is_a?(String)
 			options[:headers].each {|k, v| custom_headers << "#{k.to_s}: #{v.to_s}\r\n"} if options[:headers].is_a?(Hash)
-			options[:cookies].each {|k, v| custom_headers << "Cookie: #{ HTTP.encode_url k }=#{ HTTP.encode_url v }\r\n"} if options[:cookies].is_a?(Hash)
+			options[:cookies].each {|k, v| raise 'Illegal cookie name' if k.to_s.match(/[\x00-\x20\(\)<>@,;:\\\"\/\[\]\?\=\{\}\s]/); custom_headers << "Cookie: #{ k }=#{ HTTP.encode_url v }\r\n"} if options[:cookies].is_a?(Hash)
 			puts custom_headers
 
 			# send protocol upgrade request

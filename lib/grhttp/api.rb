@@ -26,6 +26,18 @@ module GRHttp
 		GReactor.listen params
 	end
 
+	# Connects to a websocket as a websocket client and returns the connected client object or raises an exception.
+	#
+	# The method will block until eaither a connection is established or the timeout (defaults to 5 seconds) had been reached.
+	#
+	# It's possible to use this method within a {http://www.rubydoc.info/github/boazsegev/GReactor/master/GReactor#run_async-class_method GReactor.run_async} for asynchronous handling.
+	#
+	# this is actually a shortcut for {GRHttp::WSClient.connect}.
+	def ws_connect url, options={}, &block
+		GRHttp::WSClient.connect url, options={}, &block
+	end
+
+
 	# Defers any missing methods to the GReactor Library.
 	def method_missing name, *args, &block
 		return super unless REACTOR_METHODS.include? name
