@@ -10,6 +10,9 @@ puts GRHttp::VERSION
 # ~/ruby/wrk/wrk -c400 -d10 -t12 http://localhost:3000/ctrl
 # ab -n 10000 -c 200 -k http://127.0.0.1:3000/
 
+# GR.start; 10_000.times {|i| GR.run_async {GR.run_after(5, GRHttp.ws_connect('ws://localhost:3000') {|ws| } ) {|ws| ws.close; puts "#{i} closed" } ; puts "opening #{i}"} }
+
+
 module MyServer
     module_function
     def call request, response

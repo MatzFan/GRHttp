@@ -4,6 +4,8 @@
 
 Change log v.0.0.23
 
+**Update**: Update the required GReactor version.
+
 **Fix**: fixed cookie name requirements for the WSClient.
 
 **API**: added  `ws_connect` API for quick access to the WSClient.connect.
