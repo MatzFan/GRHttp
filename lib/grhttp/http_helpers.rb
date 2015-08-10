@@ -7,16 +7,16 @@ module GRHttp
 		public
 
 		# re-encodes a string into UTF-8
-		def self.make_utf8!(string, encoding= 'utf-8')
+		def self.make_utf8!(string, encoding= ::Encoding::UTF_8)
 			return false unless string
-			string.force_encoding('binary').encode!(encoding, 'binary', invalid: :replace, undef: :replace, replace: '') unless string.force_encoding(encoding).valid_encoding?
+			string.force_encoding(::Encoding::ASCII_8BIT).encode!(encoding, ::Encoding::ASCII_8BIT, invalid: :replace, undef: :replace, replace: '') unless string.force_encoding(encoding).valid_encoding?
 			string
 		end
 
 		# re-encodes a string into UTF-8
-		def self.try_utf8!(string, encoding= 'utf-8')
+		def self.try_utf8!(string, encoding= ::Encoding::UTF_8)
 			return false unless string
-			string.force_encoding('binary') unless string.force_encoding(encoding).valid_encoding?
+			string.force_encoding(::Encoding::ASCII_8BIT) unless string.force_encoding(encoding).valid_encoding?
 			string
 		end
 
@@ -73,7 +73,7 @@ module GRHttp
 			elsif object.is_a?(String)
 				case decode_method
 				when :uri, :url, :form
-					object.force_encoding 'binary'
+					object.force_encoding ::Encoding::ASCII_8BIT
 					object.gsub!(/[^a-zA-Z0-9\*\.\_\-]/) {|m| '%%%02x' % m.ord }
 				when :html
 					object.gsub!('&', '&amp;')
@@ -82,10 +82,10 @@ module GRHttp
 					object.gsub!('<', '&lt;')
 					object.gsub!(/[^\sa-zA-Z\d\&\;]/) {|m| '&#%04d;' % m.unpack('U')[0] }
 					# object.gsub!(/[^\s]/) {|m| "&#%04d;" % m.unpack('U')[0] }
-					object.force_encoding 'binary'
+					object.force_encoding ::Encoding::ASCII_8BIT
 				when :utf8
 					object.gsub!(/[^\sa-zA-Z\d]/) {|m| '&#%04d;' % m.unpack('U')[0] }
-					object.force_encoding 'binary'
+					object.force_encoding ::Encoding::ASCII_8BIT
 				else
 
 				end
@@ -100,7 +100,7 @@ module GRHttp
 		end
 
 		def self.encode_url str
-			str.to_s.dup.force_encoding('binary').gsub(/[^a-z0-9\*\.\_\-]/i) {|m| '%%%02x' % m.ord }
+			str.to_s.dup.force_encoding(::Encoding::ASCII_8BIT).gsub(/[^a-z0-9\*\.\_\-]/i) {|m| '%%%02x' % m.ord }
 			# str.to_s.b.gsub(/[^a-z0-9\*\.\_\-]/i) {|m| '%%%02x' % m.ord }
 		end
 
@@ -333,7 +333,7 @@ module GRHttp
 		# read the body's data and parse any incoming data.
 		def self._read_body request
 			# save body for Rack, if applicable
-			request[:rack_input] = StringIO.new(request[:body].dup.force_encoding('binary')) if request[:io].params[:http_handler] == ::GRHttp::Base::Rack
+			request[:rack_input] = StringIO.new(request[:body].dup.force_encoding(::Encoding::ASCII_8BIT)) if request[:io].params[:http_handler] == ::GRHttp::Base::Rack
 			# parse content
 			case request['content-type'].to_s
 			when /x-www-form-urlencoded/

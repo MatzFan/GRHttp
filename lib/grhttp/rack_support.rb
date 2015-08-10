@@ -62,10 +62,6 @@ module GRHttp
 			out << ('Set-Cookie: ' + (res[1].delete('Set-Cookie').split("\n")).join("\r\nSet-Cookie: ") + "\r\n") if res[1]['Set-Cookie']
 			res[1].each {|h, v| out << "#{h.to_s}: #{v}\r\n"}
 
-			# GR.log_raw out
-			# puts @request.to_s
-			# puts "Will close: #{(!@io[:keep_alive]).to_s}\n\n"
-
 			out << "\r\n"
 			@io.write out
 			out.clear

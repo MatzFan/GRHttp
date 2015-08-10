@@ -79,7 +79,7 @@ module GRHttp
 			# sends the data as one (or more) Websocket frames
 			def send_data io, data, op_code = nil, fin = true
 				return false if !data || data.empty?
-				op_code ||= (data.encoding.name == 'UTF-8' ? 1 : 2)
+				op_code ||= (data.encoding == ::Encoding::UTF_8 ? 1 : 2)
 				byte_size = data.bytesize
 				if byte_size > (FRAME_SIZE_LIMIT+2)
 					data = data.dup
@@ -91,7 +91,7 @@ module GRHttp
 				ext = 0
 				# # ext |= call each io.protocol.extenetions with data #changes data and returns flags to be set
 				# io[:ws_extentions].each { |ex| ext |= WSProtocol::SUPPORTED_EXTENTIONS[ex[0]][2].call data, ex[1..-1]}
-				header = ( (fin ? 0b10000000 : 0) | (op_code & 0b00001111) | ext).chr.force_encoding('binary')
+				header = ( (fin ? 0b10000000 : 0) | (op_code & 0b00001111) | ext).chr.force_encoding(::Encoding::ASCII_8BIT)
 
 				if byte_size < 125
 					header << byte_size.chr
@@ -115,7 +115,7 @@ module GRHttp
 			# 	if data[FRAME_SIZE_LIMIT] && fin
 			# 		# fragment big data chuncks into smaller frames - op-code reset for 0 for all future frames.
 			# 		data = data.dup
-			# 		data.force_encoding('binary')
+			# 		data.force_encoding(::Encoding::ASCII_8BIT)
 			# 		[frame << frame_data(io, data.slice!(0...FRAME_SIZE_LIMIT), op_code, false), op_code = 0] while data.byte_size > FRAME_SIZE_LIMIT # 1048576
 			# 		# frame << frame_data(io, data.slice!(0..1048576), op_code, false)
 			# 		# data = 
@@ -142,7 +142,7 @@ module GRHttp
 			# 	end
 			# 	frame.force_encoding(data.encoding)
 			# 	frame << data
-			# 	frame.force_encoding('binary')
+			# 	frame.force_encoding(::Encoding::ASCII_8BIT)
 			# 	frame
 			# end
 

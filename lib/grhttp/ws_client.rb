@@ -162,7 +162,6 @@ module GRHttp
 			custom_headers = options[:headers] if options[:headers].is_a?(String)
 			options[:headers].each {|k, v| custom_headers << "#{k.to_s}: #{v.to_s}\r\n"} if options[:headers].is_a?(Hash)
 			options[:cookies].each {|k, v| raise 'Illegal cookie name' if k.to_s.match(/[\x00-\x20\(\)<>@,;:\\\"\/\[\]\?\=\{\}\s]/); custom_headers << "Cookie: #{ k }=#{ HTTP.encode_url v }\r\n"} if options[:cookies].is_a?(Hash)
-			puts custom_headers
 
 			# send protocol upgrade request
 			websocket_key = [(Array.new(16) {rand 255} .pack 'c*' )].pack('m0*')
@@ -170,7 +169,7 @@ module GRHttp
 			# wait for answer - make sure we don't over-read
 			# (a websocket message might be sent immidiately after connection is established)
 			reply = ''
-			reply.force_encoding('binary')
+			reply.force_encoding(::Encoding::ASCII_8BIT)
 			stop_time = Time.now + (options[:timeout] || 5)
 			stop_reply = "\r\n\r\n"
 			sleep 0.2
