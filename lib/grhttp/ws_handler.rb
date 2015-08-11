@@ -176,7 +176,7 @@ module GRHttp
 			# uuid:: the UUID of the websocket connection recipient.
 			# data:: the data to be sent.
 			#
-			# @returns [true, false] Returns true if the object was found and the unicast was sent (the task will be executed asynchronously once the unicast was sent).
+			# @return [true, false] Returns true if the object was found and the unicast was sent (the task will be executed asynchronously once the unicast was sent).
 			def unicast uuid, data
 				return false unless uuid && data
 				GReactor.each {|io| next unless io[:uuid] == uuid; GReactor.queue [io, data], DO_BROADCAST_PROC; return true}

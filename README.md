@@ -6,7 +6,7 @@ This is a native Ruby HTTP and WebSocket multi-threaded server that uses the [GR
 
 This means it's all ruby, no C or Java code. The code is thread-safe and also supports GReactor's forking... although it might effect your code (especially with regards to websocket broadcasting).
 
-GRHttp is Rack compatible... although [GRHttp is meant to be a step forward](HTTP.md), taking what we learned from our experience using Rack and designing the next generation of servers, as suggested by [José Valim](http://blog.plataformatec.com.br/2012/06/why-your-web-framework-should-not-adopt-rack-api/).
+GRHttp is Rack compatible... although [GRHttp is meant to be a step forward](docs/HTTP.md), taking what we learned from our experience using Rack and designing the next generation of servers, as suggested by [José Valim](http://blog.plataformatec.com.br/2012/06/why-your-web-framework-should-not-adopt-rack-api/).
 
 ## How do I get it?
 

@@ -81,7 +81,7 @@ module GRHttp
 		#       end
 		#     end
 		#
-		# @returns [true, exception] The method returns immidiatly with a value of true unless it is impossible to stream the response (an exception will be raised) or a block wasn't supplied.
+		# @return [true, Exception] The method returns immidiatly with a value of true unless it is impossible to stream the response (an exception will be raised) or a block wasn't supplied.
 		def stream_async &block
 			raise "Block required." unless block
 			start_streaming unless @finished

@@ -20,9 +20,8 @@ module GRHttp
 		# Encodes data according to the websocket standard and sends the data over the websocket connection.
 		def write data
 			# should synchronize?
-			# @io.locker.synchronize { ... } 
+			# \@io.locker.synchronize { ... } 
 			Base::WSHandler.send_data @io, data.to_s
-			# @io.write Base::WSHandler.frame_data(@io, data.to_s) if data
 		end
 		alias :send :write
 		alias :<< :write
