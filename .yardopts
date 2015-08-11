@@ -1,1 +1,1 @@
-yardoc lib/**/*.rb ext/**/*.c docs/*.md
+yardoc lib/**/*.rb ext/**/*.c - docs/*.md
