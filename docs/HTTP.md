@@ -55,11 +55,11 @@ end
 exit
 ```
 
-
-Rack can perform blocking While Rack's new world workflow would require a lengthly example for each possible behavior (not to mention, Websockets which require different code for different Rack servers), GRHttp makes it simple.
-
+But.. There's a subtle difference between a bocking Rack response and what we have just experienced.
 
 Using `response.send data` forces the response to send the data immediately, unlike `response << data` which sends the data immediately only if data was already sent using `response.send`.
+
+This means that is the example above, GRHttp automatically **streamed** our responce - while in a Rack world the response would have been sent only after it's computation was complete (if a timeout didn't occure by than).
 
 Our thread was blocking, but data was constantly streamed.
 
@@ -92,9 +92,11 @@ Review this using telnet to see the actual streaming (The browser will block for
     > Host: localhost:3000
     >       (empty line)
 
-How can we implement non-blocking HTTP streaming in Rack? Well, the simple answer is - we can't...
+How can we implement non-blocking HTTP streaming in Rack? Well, the simple answer is - we might be able to, but we shouldn't...
 
-...If we can, I simply have no idea how. As far as I know, Rach will call `#each` on the body it recieves. Once `#each` completes, the response will be done. Unless the IO is hijacked and we leave Rack behind, we cannot stream data asynchronously and we will experience a long blocking task.
+...If we can (which isn't always true), we use 'proxy' response objects that answer to `each` and complete a task with each itiration - but that never releases Rack's thread(!). So, in effect, we cannot avoid blocking Rack (or maybe I simply have no idea how to do so)\*... 
+
+\* As far as I know, Rack will call `#each` on the body it recieves. Once `#each` completes, the response will be done. Unless the IO is hijacked and we leave Rack behind, we cannot stream data asynchronously and we will experience a long blocking task.
 
 
 ## Contributing
