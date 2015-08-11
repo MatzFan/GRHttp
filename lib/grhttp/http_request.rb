@@ -142,7 +142,7 @@ module GRHttp
 		HTTP_UPGRADE = 'upgrade'; HTTP_UPGRADE_REGEX = /upg/i ; HTTP_WEBSOCKET = 'websocket'; HTTP_CONNECTION = 'connection'
 		# returns true if this is a websocket upgrade request
 		def upgrade?
-			self[HTTP_UPGRADE] && self[HTTP_UPGRADE].to_s.downcase == HTTP_WEBSOCKET &&  self[HTTP_CONNECTION].to_s.match(HTTP_UPGRADE_REGEX) && true
+			@is_upgrade ||= (self[HTTP_UPGRADE] && self[HTTP_UPGRADE].to_s.downcase == HTTP_WEBSOCKET &&  self[HTTP_CONNECTION].to_s.match(HTTP_UPGRADE_REGEX) && true)
 		end
 
 	end
