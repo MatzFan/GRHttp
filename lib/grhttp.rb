@@ -1,8 +1,10 @@
 require 'time'
 require 'json'
+require 'yaml'
 require 'uri'
 require 'securerandom'
 require 'stringio'
+require 'tmpdir'
 
 require 'greactor'
 

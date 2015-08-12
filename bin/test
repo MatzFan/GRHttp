@@ -28,6 +28,8 @@ module MyServer
         end
         return true
       end
+      puts "Your last visit here was #{response.session[:last_visit]}" if response.session[:last_visit]
+      response.session[:last_visit] = Time.now
       response << 'Hello my World!'#  request.to_s
       true
     end
