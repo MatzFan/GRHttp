@@ -120,12 +120,12 @@ module GRHttp
 		#
 		# OR, the on_message Proc can be defined using the options Hash: 
 		#
-		#      WebsocketClient.connect_to("ws://localhost:3000/", on_connect: -> {}, on_message: -> {|data| response << data})
+		#      WebsocketClient.connect_to("ws://localhost:3000/", on_open: -> {}, on_message: -> {|data| response << data})
 		#
-		# The #on_message(data), #on_connect and #on_disconnect methods will be executed within the context of the WebsocketClient
+		# The #on_message(data), #on_open and #on_close methods will be executed within the context of the WebsocketClient
 		# object, and will have natice acess to the Websocket response object.
 		#
-		# After the WebsocketClient had been created, it's possible to update the #on_message and #on_disconnect methods:
+		# After the WebsocketClient had been created, it's possible to update the #on_message and #on_close methods:
 		#
 		#      # updates #on_message
 		#      wsclient.on_message do |data|
@@ -137,6 +137,7 @@ module GRHttp
 		#
 		# !!please be aware that the Websockt Client will not attempt to verify SSL certificates,
 		# so that even SSL connections are subject to a possible man in the middle attack.
+		#
 		# @return [GRHttp::WSClient] this method returns the connected {GRHttp::WSClient} or raises an exception if something went wrong (such as a connection timeout).
 		def self.connect url, options={}, &block
 			GReactor.start unless GReactor.running?
