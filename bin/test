@@ -5,7 +5,7 @@ Root ||= Pathname.new(File.dirname(__FILE__)).expand_path
 Dir.chdir Root.join('..').to_s
 require "bundler/setup"
 require "grhttp"
-puts GRHttp::VERSION
+puts "Using GRHttp #{GRHttp::VERSION} with GReactor #{GReactor::VERSION}"
 
 # ~/ruby/wrk/wrk -c400 -d10 -t12 http://localhost:3000/ctrl
 # ab -n 10000 -c 200 -k http://127.0.0.1:3000/
