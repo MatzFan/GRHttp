@@ -17,8 +17,7 @@ module GRHttp
 				a.close
 
 			end
-			# This method is called by the reactor.
-			# By default, this method reads the data from the IO and calls the `#on_message data` method.
+			# This method is called by the reactor after the connection is closed.
 			def on_disconnect io
 				h = io[:websocket_handler]
 				h.on_close(WSEvent.new(io, nil)) if h.respond_to? :on_close

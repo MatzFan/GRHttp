@@ -2,6 +2,12 @@
 
 ***
 
+Change log v.0.0.24
+
+**Update**: Update the GReactor version to version 0.1.0, adopting it's new IO API.
+
+***
+
 Change log v.0.0.23
 
 **Update**: Update the required GReactor version.

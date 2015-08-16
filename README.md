@@ -78,9 +78,11 @@ This is How the [Plezi framework](https://github.com/boazsegev/plezi), which use
 
 ### How does it stack up against other servers?
 
-The greatest sin is believing 'Hello World' apps are a good benchmark - they are NOT. For instance, replacing my Thin server on a production app with GRHttp had **less then a 4% impact** and added Websockets to the mix... But since "Hello World" apps the common way to isolate the server component, here goes...
+The greatest sin is believing 'Hello World' apps are a good benchmark - they are NOT. For instance, replacing my Thin server on a production app with GRHttp had **less then a 4% impact** and added Websockets to the mix... In the end of the day, the server is usually NOT the bottleneck.
 
-Although GRHttp\* does more for your application, it still performs quite well as a Rack server. Here is a quick comparison I ran on my MacBook Pro, on Ruby MRI v. ruby 2.2.2p95:
+But since "Hello World" apps the common way to isolate the server component, I tried doing some benchmarking and was fairly happy with the results.
+
+Although GRHttp\* does more for your application, I felt that it still performs quite well as a Rack server. Here is a quick comparison I ran on my MacBook Pro, on Ruby MRI v. ruby 2.2.2p95:
 
 | Server   | Req/Sec | Remarks |
 |----------|---------|---------|

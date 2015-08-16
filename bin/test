@@ -28,18 +28,19 @@ module MyServer
         end
         return true
       end
-      puts "Your last visit here was #{response.session[:last_visit]}" if response.session[:last_visit]
-      response.session[:last_visit] = Time.now
+      # puts "Your last visit here was #{response.session[:last_visit]}" if response.session[:last_visit]
+      # response.session[:last_visit] = Time.now
       response << 'Hello my World!'#  request.to_s
       true
     end
     def on_open ws
+      puts 'WebSocket Opened!'
       @first ||= ws.uuid
       ws.autopong 40
       ws << "System: Hello!"
 
       if ws.uuid == @first
-        ws << "System: You're the first one here, so you get special notifications :-)"
+        ws << "System: You're chosen as an admin, so you get special notifications :-)"
       else
         ws.unicast @first, "System: Someone just joind the chat"
       end
@@ -55,6 +56,7 @@ module MyServer
     def on_close ws
       puts 'WebSocket Closed!'
       ws.unicast @first, "System: Someone just left the chat"
+      @first = nil if ws.uuid == @first
     end
 end
 

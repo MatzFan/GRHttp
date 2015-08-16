@@ -9,7 +9,7 @@ module GRHttp
 		# re-encodes a string into UTF-8
 		def self.make_utf8!(string, encoding= ::Encoding::UTF_8)
 			return false unless string
-			string.force_encoding(::Encoding::ASCII_8BIT).encode!(encoding, ::Encoding::ASCII_8BIT, invalid: :replace, undef: :replace, replace: '') unless string.force_encoding(encoding).valid_encoding?
+			string.force_encoding(::Encoding::ASCII_8BIT).encode!(encoding, ::Encoding::ASCII_8BIT, invalid: :replace, undef: :replace, replace: ''.freeze) unless string.force_encoding(encoding).valid_encoding?
 			string
 		end
 
@@ -22,10 +22,10 @@ module GRHttp
 
 		# Escapes html. based on the WEBRick source code, escapes &, ", > and < in a String object
 		def self.escape(string)
-			# string.gsub('&', '&amp;')
-			# .gsub('"', '&quot;')
-			# .gsub('>', '&gt;')
-			# .gsub('<', '&lt;')
+			# string.gsub('&'.freeze, '&amp;'.freeze)
+			# .gsub('"'.freeze, '&quot;'.freeze)
+			# .gsub('>'.freeze, '&gt;'.freeze)
+			# .gsub('<'.freeze, '&lt;'.freeze)
 			CGI.escapeHTML(string.to_s)
 		end
 		
@@ -38,15 +38,15 @@ module GRHttp
 			elsif object.is_a?(String)
 				case decode_method
 				when :form
-					object.gsub!('+', '%20')
+					object.gsub!('+'.freeze, '%20'.freeze)
 					object.gsub!(/\%[0-9a-fA-F][0-9a-fA-F]/) {|m| m[1..2].to_i(16).chr}
 				when :uri, :url
 					object.gsub!(/\%[0-9a-fA-F][0-9a-fA-F]/) {|m| m[1..2].to_i(16).chr}
 				when :html
-					object.gsub!(/&amp;/i, '&')
-					object.gsub!(/&quot;/i, '"')
-					object.gsub!(/&gt;/i, '>')
-					object.gsub!(/&lt;/i, '<')
+					object.gsub!(/&amp;/i, '&'.freeze)
+					object.gsub!(/&quot;/i, '"'.freeze)
+					object.gsub!(/&gt;/i, '>'.freeze)
+					object.gsub!(/&lt;/i, '<'.freeze)
 				when :utf8
 
 				else
@@ -74,17 +74,17 @@ module GRHttp
 				case decode_method
 				when :uri, :url, :form
 					object.force_encoding ::Encoding::ASCII_8BIT
-					object.gsub!(/[^a-zA-Z0-9\*\.\_\-]/) {|m| '%%%02x' % m.ord }
+					object.gsub!(/[^a-zA-Z0-9\*\.\_\-]/) {|m| '%%%02x'.freeze % m.ord }
 				when :html
-					object.gsub!('&', '&amp;')
-					object.gsub!('"', '&quot;')
-					object.gsub!('>', '&gt;')
-					object.gsub!('<', '&lt;')
-					object.gsub!(/[^\sa-zA-Z\d\&\;]/) {|m| '&#%04d;' % m.unpack('U')[0] }
+					object.gsub!('&'.freeze, '&amp;'.freeze)
+					object.gsub!('"'.freeze, '&quot;'.freeze)
+					object.gsub!('>'.freeze, '&gt;'.freeze)
+					object.gsub!('<'.freeze, '&lt;'.freeze)
+					object.gsub!(/[^\sa-zA-Z\d\&\;]/) {|m| '&#%04d;'.freeze % m.unpack('U')[0] }
 					# object.gsub!(/[^\s]/) {|m| "&#%04d;" % m.unpack('U')[0] }
 					object.force_encoding ::Encoding::ASCII_8BIT
 				when :utf8
-					object.gsub!(/[^\sa-zA-Z\d]/) {|m| '&#%04d;' % m.unpack('U')[0] }
+					object.gsub!(/[^\sa-zA-Z\d]/) {|m| '&#%04d;'.freeze % m.unpack('U'.freeze)[0] }
 					object.force_encoding ::Encoding::ASCII_8BIT
 				else
 
@@ -100,7 +100,7 @@ module GRHttp
 		end
 
 		def self.encode_url str
-			str.to_s.dup.force_encoding(::Encoding::ASCII_8BIT).gsub(/[^a-z0-9\*\.\_\-]/i) {|m| '%%%02x' % m.ord }
+			str.to_s.dup.force_encoding(::Encoding::ASCII_8BIT).gsub(/[^a-z0-9\*\.\_\-]/i) {|m| '%%%02x'.freeze % m.ord }
 			# str.to_s.b.gsub(/[^a-z0-9\*\.\_\-]/i) {|m| '%%%02x' % m.ord }
 		end
 
@@ -109,10 +109,10 @@ module GRHttp
 			begin
 				c = target
 				val = rubyfy! value
-				a = name.chomp('[]').split('[')
+				a = name.chomp('[]'.freeze).split('['.freeze)
 
 				a[0...-1].inject(target) do |h, n|
-					n.chomp!(']');
+					n.chomp!(']'.freeze);
 					n.strip!;
 					raise "malformed parameter name for #{name}" if n.empty?
 					n = (n.to_i.to_s == n) ?  n.to_i : n.to_sym            
@@ -187,16 +187,16 @@ module GRHttp
 		# extracts parameters from the query
 		def self.extract_params data, target_hash
 			data.each do |set|
-				list = set.split('=', 2)
-				list.each {|s|  next unless s; s.gsub!('+', '%20'); s.gsub!(/\%[0-9a-f]{2}/i) {|m| m[1..2].to_i(16).chr}; s.gsub!(/&#[0-9]{4};/i) {|m| [m[2..5].to_i].pack 'U' }}
+				list = set.split('='.freeze, 2)
+				list.each {|s|  next unless s; s.gsub!('+'.freeze, '%20'.freeze); s.gsub!(/\%[0-9a-f]{2}/i) {|m| m[1..2].to_i(16).chr}; s.gsub!(/&#[0-9]{4};/i) {|m| [m[2..5].to_i].pack 'U'.freeze }}
 				add_param_to_hash list.shift, list.shift, target_hash
 			end
 		end
 		# extracts parameters from the query
 		def self.extract_header data, target_hash
 			data.each do |set|
-				list = set.split('=', 2)
-				list.each {|s| next unless s; s.gsub!(/\%[0-9a-f]{2}/i) {|m| m[1..2].to_i(16).chr}; s.gsub!(/&#[0-9]{4};/i) {|m| [m[2..5].to_i].pack 'U' }}
+				list = set.split('='.freeze, 2)
+				list.each {|s| next unless s; s.gsub!(/\%[0-9a-f]{2}/i) {|m| m[1..2].to_i(16).chr}; s.gsub!(/&#[0-9]{4};/i) {|m| [m[2..5].to_i].pack 'U'.freeze }}
 				add_param_to_hash list.shift, list.shift, target_hash
 			end
 		end
@@ -204,9 +204,9 @@ module GRHttp
 		def self.rubyfy!(string)
 			return string unless string.is_a?(String)
 			try_utf8! string
-			if string == 'true'
+			if string == 'true'.freeze
 				string = true
-			elsif string == 'false'
+			elsif string == 'false'.freeze
 				string = false
 			elsif string.to_i.to_s == string
 				string = string.to_i
@@ -224,17 +224,17 @@ module GRHttp
 			until request[:headers_complete] || data.eof?
 				header = data.gets
 				next unless header
-				if header.match EOHEADERS
+				if header =~ EOHEADERS
 					request[:headers_complete] = true
 				else
 					m = header.strip.split /\:[\s]*/ , 2
 					m[0].downcase! if m[0]
-					if m[0] == 'cookie'
+					if m[0] == 'cookie'.freeze
 						# save cookies for Rack, if applicable
 						request[ m[0] ] ? (request[ m[0] ] << "; #{m[1].strip}") : (request[ m[0] ] = m[1].strip ) if request[:io].params[:http_handler] == ::GRHttp::Base::Rack
 						# extract data
 						HTTP.extract_header m[1].split(HEADER_SPLIT_REGX), request.cookies
-					elsif m[0] == 'set-cookie'
+					elsif m[0] == 'set-cookie'.freeze
 						m[1] = m[1].split(';')[0]
 						HTTP.extract_header m[1].split(HEADER_SPLIT_REGX), request.cookies
 					elsif m[1]
@@ -245,13 +245,13 @@ module GRHttp
 				end
 			end
 			while request[:headers_complete] && !request[:body_complete]
-				if request['transfer-coding'] == 'chunked'
+				if request['transfer-coding'.freeze] == 'chunked'.freeze
 					# ad mid chunk logic here
 					if io[:length].to_i == 0
 						chunk = data.gets
 						return false unless chunk
 						io[:length] = chunk.match.to_i(16)
-						io.close && raise("Unknown error parsing chunked data") unless io[:length]
+						io.close && raise("Unknown error parsing chunked data".freeze) unless io[:length]
 						request[:body_complete] = true && break if io[:length] == 0
 						io[:act_length] = 0
 						request[:body] ||= ''
@@ -261,18 +261,18 @@ module GRHttp
 					request[:body] << chunk
 					io[:act_length] += chunk.bytesize
 					(io[:act_length] = io[:length] = 0) && (data.gets) if io[:act_length] >= io[:length]
-				elsif request['content-length'] && request['content-length'].to_i != 0
+				elsif request['content-length'.freeze] && request['content-length'.freeze].to_i != 0
 					request[:body] ||= ''
-					packet = data.read(request['content-length'].to_i - request[:body].bytesize)
+					packet = data.read(request['content-length'.freeze].to_i - request[:body].bytesize)
 					return false unless packet
 					request[:body] << packet
-					request[:body_complete] = true if request['content-length'].to_i - request[:body].bytesize <= 0
-				elsif request['content-type']
-					GR.warn 'Body type protocol error.' unless request[:body]
+					request[:body_complete] = true if request['content-length'.freeze].to_i - request[:body].bytesize <= 0
+				elsif request['content-type'.freeze]
+					GReactor.warn 'Body type protocol error.' unless request[:body]
 					line = data.gets
 					return false unless line
 					(request[:body] ||= '') << line
-					request[:body_complete] = true if line.match EOHEADERS
+					request[:body_complete] = true if line =~ EOHEADERS
 				else
 					request[:body_complete] = true
 				end
@@ -282,11 +282,11 @@ module GRHttp
 
 		# read the body's data and parse any incoming data.
 		def self._finialize_request request			
-			request[:client_ip] = request['x-forwarded-for'].to_s.split(/,[\s]?/)[0] || (request[:io].io.remote_address.ip_address) rescue 'unknown IP'
-			request[:version] = (request[:version] || '1.1').to_s.match(/[\d\.]+/)[0]
+			request[:client_ip] = request['x-forwarded-for'.freeze].to_s.split(/,[\s]?/)[0] || (request[:io].io.remote_address.ip_address) rescue 'unknown IP'.freeze
+			request[:version] = (request[:version] || '1.1'.freeze).to_s.match(/[\d\.]+/)[0]
 
-			request[:requested_protocol] = request['x-forwarded-proto'] ? request['x-forwarded-proto'].downcase : ( request[:io].ssl? ? 'https' : 'http')
-			tmp = request['host'] ? request['host'].split(':') : []
+			request[:requested_protocol] = request['x-forwarded-proto'.freeze] ? request['x-forwarded-proto'.freeze].downcase : ( request[:io].ssl? ? 'https'.freeze : 'http'.freeze)
+			tmp = request['host'.freeze] ? request['host'.freeze].split(':') : []
 			request[:host_name] = tmp[0]
 			request[:port] = tmp[1] || nil
 
@@ -300,16 +300,16 @@ module GRHttp
 
 			#check for server-responses
 			case request.request_method
-			when 'TRACE'
+			when 'TRACE'.freeze
 				request[:io][:request] = nil
 				request[:io].close
 				return false
-			when 'OPTIONS'
+			when 'OPTIONS'.freeze
 				response = HTTPResponse.new request
 				request[:io][:request] = nil
-				response[:Allow] = 'GET,HEAD,POST,PUT,DELETE,OPTIONS'
-				response['access-control-allow-origin'] = '*'
-				response['content-length'] = 0
+				response[:Allow] = 'GET,HEAD,POST,PUT,DELETE,OPTIONS'.freeze
+				response['access-control-allow-origin'.freeze] = '*'
+				response['content-length'.freeze] = 0
 				response.finish
 				return false
 			end
@@ -335,7 +335,7 @@ module GRHttp
 			# save body for Rack, if applicable
 			request[:rack_input] = StringIO.new(request[:body].dup.force_encoding(::Encoding::ASCII_8BIT)) if request[:io].params[:http_handler] == ::GRHttp::Base::Rack
 			# parse content
-			case request['content-type'].to_s
+			case request['content-type'.freeze].to_s
 			when /x-www-form-urlencoded/
 				HTTP.extract_params request.delete(:body).split(/[&;]/), request[:params] #, :form # :uri
 			when /multipart\/form-data/
@@ -351,22 +351,22 @@ module GRHttp
 
 		# parse a mime/multipart body or part.
 		def self._read_multipart request, headers, part, name_prefix = ''
-			if headers['content-type'].to_s.match /multipart/
-				boundry = headers['content-type'].match(/boundary=([^\s]+)/)[1]
-				if headers['content-disposition'].to_s.match /name=/
+			if headers['content-type'].to_s =~ /multipart/i
+				boundry = headers['content-type'.freeze].match(/boundary=([^\s]+)/)[1]
+				if headers['content-disposition'.freeze].to_s =~ /name=/
 					if name_prefix.empty?
-						name_prefix << HTTP.decode(headers['content-disposition'].to_s.match(/name="([^"]*)"/)[1])
+						name_prefix << HTTP.decode(headers['content-disposition'.freeze].to_s.match(/name="([^"]*)"/)[1])
 					else
-						name_prefix << "[#{HTTP.decode(headers['content-disposition'].to_s.match(/name="([^"]*)"/)[1])}]"
+						name_prefix << "[#{HTTP.decode(headers['content-disposition'.freeze].to_s.match(/name="([^"]*)"/)[1])}]"
 					end
 				end
 				part.split(/([\r]?\n)?--#{boundry}(--)?[\r]?\n/).each do |p|
-					unless p.strip.empty? || p=='--'
+					unless p.strip.empty? || p=='--'.freeze
 						# read headers
 						h = {}
 						m = p.slice! /\A[^\r\n]*[\r]?\n/
 						while m
-							break if m.match /\A[\r]?\n/
+							break if m =~ /\A[\r]?\n/
 							m = m.match(/^([^:]+):[\s]?([^\r\n]+)/)
 							h[m[1].downcase] = m[2] if m
 							m = p.slice! /\A[^\r\n]*[\r]?\n/
@@ -383,14 +383,14 @@ module GRHttp
 
 			# convert part to `charset` if charset is defined?
 
-			if !headers['content-disposition']
+			if !headers['content-disposition'.freeze]
 				GReactor.error "Wrong multipart format with headers: #{headers} and body: #{part}"
 				return
 			end
 
 			cd = {}
 
-			HTTP.extract_header headers['content-disposition'].match(/[^;];([^\r\n]*)/)[1].split(/[;,][\s]?/), cd
+			HTTP.extract_header headers['content-disposition'.freeze].match(/[^;];([^\r\n]*)/)[1].split(/[;,][\s]?/), cd
 
 			name = name_prefix.dup
 
@@ -399,10 +399,10 @@ module GRHttp
 			else
 				name << "[#{HTTP.decode(cd[:name][1..-2])}]"
 			end
-			if headers['content-type']
+			if headers['content-type'.freeze]
 				HTTP.add_param_to_hash "#{name}[data]", part, request[:params]
-				HTTP.add_param_to_hash "#{name}[type]", HTTP.make_utf8!(headers['content-type']), request[:params]
-				cd.each {|k,v|  HTTP.add_param_to_hash "#{name}[#{k.to_s}]", HTTP.make_utf8!(v[1..-2]), request[:params] unless k == :name}
+				HTTP.add_param_to_hash "#{name}[type]", HTTP.make_utf8!(headers['content-type'.freeze]), request[:params]
+				cd.each {|k,v|  HTTP.add_param_to_hash "#{name}[#{k.to_s}]", HTTP.make_utf8!(v[1..-2].to_s), request[:params] unless k == :name || !v}
 			else
 				HTTP.add_param_to_hash name, HTTP.decode(part, :utf8), request[:params]
 			end

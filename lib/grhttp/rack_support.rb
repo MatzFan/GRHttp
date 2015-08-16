@@ -9,7 +9,7 @@ module GRHttp
 				add = true
 				(GReactor.instance_variable_get(:@listeners) || {}).each do |params, io|
 					# if this is the first listener with a default port - update the port number
-					params[:port] = options[:Port] if params[:port] == 3000 && add
+					params[:port] = options[:Port] if options[:Port] && params[:port] == 3000 && add
 					params[:pre_rack_handler] = params[:http_handler]
 					params[:http_handler] = self
 					add = false
@@ -17,12 +17,19 @@ module GRHttp
 
 				GRHttp.listen port: options[:Port], bind: options[:Host], http_handler: self if add
 
-				GReactor.log_raw "\r\nStarting GRHttp v. #{GRHttp::VERSION} on GReactor #{GReactor::VERSION}.\r\n"
+				GReactor.log_raw "\r\nStarting GRHttp v. #{GRHttp::VERSION} with GReactor #{GReactor::VERSION}.\r\n"
 				GReactor.log_raw "\r\nUse ^C to exit\r\n"
 
-				GReactor.start
-				GReactor.join {GReactor.log_raw "\r\nGRHttp and GReactor starting shutdown\r\n"}
-				GReactor.log_raw "\r\nGRHttp and GReactor completed shutdown\r\n"
+				# if GReactor::Settings.forking?
+				# 	GReactor::Settings.set_forking false
+				# 	GReactor.warn 'Forking GRHttp is disabled when using Rack.'
+				# end
+
+				# GReactor.instance_exec { stop_listeners }
+				GReactor.stop if GReactor.running?
+				GReactor.join {GReactor.log_raw "\r\nGRHttp starting shutdown\r\n"}
+				GReactor.log_raw "\r\nGRHttp completed shutdown\r\n"
+				true
 			end
 			def call request, response
 				if tmp = request[:io].params[:pre_rack_handler]
@@ -48,9 +55,9 @@ module GRHttp
 			@headers.freeze
 
 			# fix connection header
-			if res[1]['Connection'].to_s.match(/^k/i) || (@request[:version].to_f > 1 && @request['connection'].nil?) || @request['connection'].to_s.match(/^k/i)
+			if res[1]['Connection'.freeze] =~ /^k/i || (@request[:version].to_f > 1 && @request['connection'.freeze].nil?) || @request['connection'.freeze] =~ /^k/i
 				@io[:keep_alive] = true
-				res[1]['Connection'] ||= "Keep-Alive\r\nKeep-Alive: timeout=5"
+				res[1]['Connection'.freeze] ||= "Keep-Alive\r\nKeep-Alive: timeout=5".freeze
 			end
 
 			# @io[:keep_alive] = true if res[1]['Connection'].to_s.match(/^k/i)
@@ -59,10 +66,10 @@ module GRHttp
 			# Send Rack's headers
 			out = ''
 			out << "#{@http_version} #{@status} #{STATUS_CODES[@status] || 'unknown'}\r\n" #"Date: #{Time.now.httpdate}\r\n"
-			out << ('Set-Cookie: ' + (res[1].delete('Set-Cookie').split("\n")).join("\r\nSet-Cookie: ") + "\r\n") if res[1]['Set-Cookie']
+			out << ('Set-Cookie: ' + (res[1].delete('Set-Cookie').split("\n")).join("\r\nSet-Cookie: ") + "\r\n") if res[1]['Set-Cookie'.freeze]
 			res[1].each {|h, v| out << "#{h.to_s}: #{v}\r\n"}
 
-			out << "\r\n"
+			out << "\r\n".freeze
 			@io.write out
 			out.clear
 
@@ -80,11 +87,12 @@ module GRHttp
 			# env.each {|k, v| env[k] = @request[v] if v.is_a?(Symbol)}
 			RACK_ADDON.each {|k, v| env[k] = (@request[v].is_a?(String) ? ( @request[v].frozen? ? @request[v].dup.force_encoding('ASCII-8BIT') : @request[v].force_encoding('ASCII-8BIT') ): @request[v])}
 			@request.each {|k, v| env["HTTP_#{k.upcase.gsub('-', '_')}"] = v if k.is_a?(String) }
-			env['rack.input'] ||= StringIO.new(''.force_encoding('ASCII-8BIT'))
-			env['CONTENT_LENGTH'] = env.delete 'HTTP_CONTENT_LENGTH' if env['HTTP_CONTENT_LENGTH']
-			env['CONTENT_TYPE'] = env.delete 'HTTP_CONTENT_TYPE' if env['HTTP_CONTENT_TYPE']
-			env['HTTP_VERSION'] = "HTTP/#{request[:version].to_s}"
-			env['QUERY_STRING'] ||= ''
+			env['rack.input'.freeze] ||= StringIO.new(''.force_encoding('ASCII-8BIT'.freeze))
+			env['CONTENT_LENGTH'.freeze] = env.delete 'HTTP_CONTENT_LENGTH'.freeze if env['HTTP_CONTENT_LENGTH'.freeze]
+			env['CONTENT_TYPE'.freeze] = env.delete 'HTTP_CONTENT_TYPE'.freeze if env['HTTP_CONTENT_TYPE'.freeze]
+			env['HTTP_VERSION'.freeze] = "HTTP/#{request[:version].to_s}"
+			env['QUERY_STRING'.freeze] ||= ''
+			env['rack.errors'.freeze] = StringIO.new(''),
 			env
 		end
 
@@ -108,7 +116,6 @@ module GRHttp
 			'SERVER_SOFTWARE'	=> "GRHttp v. #{GRHttp::VERSION} on GReactor #{GReactor::VERSION}",
 			'SCRIPT_NAME'		=> ''.force_encoding('ASCII-8BIT'),
 			'rack.logger'		=> GReactor,
-			'rack.errors'		=> StringIO.new(''),
 			'rack.multithread'	=> true,
 			'rack.multiprocess'	=> (GR::Settings.forking?),
 			# 'rack.hijack?'		=> false,

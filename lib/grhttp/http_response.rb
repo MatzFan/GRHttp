@@ -148,6 +148,9 @@ module GRHttp
 			headers[header]	= value
 		end
 
+
+		COOKIE_NAME_REGEXP = /[\x00-\x20\(\)<>@,;:\\\"\/\[\]\?\=\{\}\s]/
+
 		# Sets/deletes cookies when headers are sent.
 		#
 		# Accepts:
@@ -169,11 +172,11 @@ module GRHttp
 		def set_cookie name, value, params = {}
 			raise 'Cannot set cookies after the headers had been sent.' if headers_sent?
 			name = name.to_s
-			raise 'Illegal cookie name' if name.match(/[\x00-\x20\(\)<>@,;:\\\"\/\[\]\?\=\{\}\s]/)
+			raise 'Illegal cookie name' if name.match(COOKIE_NAME_REGEXP)
 			params[:expires] = (Time.now - 315360000) unless value
-			value ||= 'deleted'
+			value ||= 'deleted'.freeze
 			params[:expires] ||= (Time.now + 315360000) unless params[:max_age]
-			params[:path] ||= '/'
+			params[:path] ||= '/'.freeze
 			value = HTTP.encode_url(value)
 			if params[:max_age]
 				value << ('; Max-Age=%s' % params[:max_age])
@@ -182,8 +185,8 @@ module GRHttp
 			end
 			value << "; Path=#{params[:path]}"
 			value << "; Domain=#{params[:domain]}" if params[:domain]
-			value << '; Secure' if params[:secure]
-			value << '; HttpOnly' if params[:http_only]
+			value << '; Secure'.freeze if params[:secure]
+			value << '; HttpOnly'.freeze if params[:http_only]
 			@cookies[name.to_sym] = value
 		end
 
@@ -217,7 +220,7 @@ module GRHttp
 		# Sends the response and flags the response as complete. Future data should not be sent. Your code might attempt sending data (which would probbaly be ignored by the client or raise an exception).
 		def finish
 			raise "Response already sent" if @finished
-			@headers['content-length'] ||= (@body = @body.join).bytesize if !headers_sent? && @body.is_a?(Array)
+			@headers['content-length'.freeze] ||= (@body = @body.join).bytesize if !headers_sent? && @body.is_a?(Array)
 			self.write
 			@io.write "0\r\n\r\n" if @chunked
 			@finished = true
@@ -231,64 +234,64 @@ module GRHttp
 		end
 		
 		# response status codes, as defined.
-		STATUS_CODES = {100=>"Continue",
-			101=>"Switching Protocols",
-			102=>"Processing",
-			200=>"OK",
-			201=>"Created",
-			202=>"Accepted",
-			203=>"Non-Authoritative Information",
-			204=>"No Content",
-			205=>"Reset Content",
-			206=>"Partial Content",
-			207=>"Multi-Status",
-			208=>"Already Reported",
-			226=>"IM Used",
-			300=>"Multiple Choices",
-			301=>"Moved Permanently",
-			302=>"Found",
-			303=>"See Other",
-			304=>"Not Modified",
-			305=>"Use Proxy",
-			306=>"(Unused)",
-			307=>"Temporary Redirect",
-			308=>"Permanent Redirect",
-			400=>"Bad Request",
-			401=>"Unauthorized",
-			402=>"Payment Required",
-			403=>"Forbidden",
-			404=>"Not Found",
-			405=>"Method Not Allowed",
-			406=>"Not Acceptable",
-			407=>"Proxy Authentication Required",
-			408=>"Request Timeout",
-			409=>"Conflict",
-			410=>"Gone",
-			411=>"Length Required",
-			412=>"Precondition Failed",
-			413=>"Payload Too Large",
-			414=>"URI Too Long",
-			415=>"Unsupported Media Type",
-			416=>"Range Not Satisfiable",
-			417=>"Expectation Failed",
-			422=>"Unprocessable Entity",
-			423=>"Locked",
-			424=>"Failed Dependency",
-			426=>"Upgrade Required",
-			428=>"Precondition Required",
-			429=>"Too Many Requests",
-			431=>"Request Header Fields Too Large",
-			500=>"Internal Server Error",
-			501=>"Not Implemented",
-			502=>"Bad Gateway",
-			503=>"Service Unavailable",
-			504=>"Gateway Timeout",
-			505=>"HTTP Version Not Supported",
-			506=>"Variant Also Negotiates",
-			507=>"Insufficient Storage",
-			508=>"Loop Detected",
-			510=>"Not Extended",
-			511=>"Network Authentication Required"
+		STATUS_CODES = {100=>"Continue".freeze,
+			101=>"Switching Protocols".freeze,
+			102=>"Processing".freeze,
+			200=>"OK".freeze,
+			201=>"Created".freeze,
+			202=>"Accepted".freeze,
+			203=>"Non-Authoritative Information".freeze,
+			204=>"No Content".freeze,
+			205=>"Reset Content".freeze,
+			206=>"Partial Content".freeze,
+			207=>"Multi-Status".freeze,
+			208=>"Already Reported".freeze,
+			226=>"IM Used".freeze,
+			300=>"Multiple Choices".freeze,
+			301=>"Moved Permanently".freeze,
+			302=>"Found".freeze,
+			303=>"See Other".freeze,
+			304=>"Not Modified".freeze,
+			305=>"Use Proxy".freeze,
+			306=>"(Unused)".freeze,
+			307=>"Temporary Redirect".freeze,
+			308=>"Permanent Redirect".freeze,
+			400=>"Bad Request".freeze,
+			401=>"Unauthorized".freeze,
+			402=>"Payment Required".freeze,
+			403=>"Forbidden".freeze,
+			404=>"Not Found".freeze,
+			405=>"Method Not Allowed".freeze,
+			406=>"Not Acceptable".freeze,
+			407=>"Proxy Authentication Required".freeze,
+			408=>"Request Timeout".freeze,
+			409=>"Conflict".freeze,
+			410=>"Gone".freeze,
+			411=>"Length Required".freeze,
+			412=>"Precondition Failed".freeze,
+			413=>"Payload Too Large".freeze,
+			414=>"URI Too Long".freeze,
+			415=>"Unsupported Media Type".freeze,
+			416=>"Range Not Satisfiable".freeze,
+			417=>"Expectation Failed".freeze,
+			422=>"Unprocessable Entity".freeze,
+			423=>"Locked".freeze,
+			424=>"Failed Dependency".freeze,
+			426=>"Upgrade Required".freeze,
+			428=>"Precondition Required".freeze,
+			429=>"Too Many Requests".freeze,
+			431=>"Request Header Fields Too Large".freeze,
+			500=>"Internal Server Error".freeze,
+			501=>"Not Implemented".freeze,
+			502=>"Bad Gateway".freeze,
+			503=>"Service Unavailable".freeze,
+			504=>"Gateway Timeout".freeze,
+			505=>"HTTP Version Not Supported".freeze,
+			506=>"Variant Also Negotiates".freeze,
+			507=>"Insufficient Storage".freeze,
+			508=>"Loop Detected".freeze,
+			510=>"Not Extended".freeze,
+			511=>"Network Authentication Required".freeze
 		}
 
 		protected
@@ -303,7 +306,7 @@ module GRHttp
 		def fix_cookie_headers
 			# remove old flash cookies
 			request.cookies.keys.each do |k|
-				if k.to_s.start_with? 'magic_flash_'
+				if k.to_s.start_with? 'magic_flash_'.freeze
 					set_cookie k, nil
 					flash.delete k
 				end
@@ -323,21 +326,21 @@ module GRHttp
 			out << "#{@http_version} #{@status} #{STATUS_CODES[@status] || 'unknown'}\r\nDate: #{Time.now.httpdate}\r\n"
 
 			# unless @headers['connection'] || (@request[:version].to_f <= 1 && (@request['connection'].nil? || !@request['connection'].match(/^k/i))) || (@request['connection'] && @request['connection'].match(/^c/i))
-			if (@request[:version].to_f > 1 && @request['connection'].nil?) || @request['connection'].to_s.match(/^k/i) || (@headers['connection'] && @headers['connection'].match(/^k/i)) # simpler
+			if (@request[:version].to_f > 1 && @request['connection'.freeze].nil?) || @request['connection'.freeze].to_s =~ /^k/i || (@headers['connection'.freeze] && @headers['connection'.freeze] =~ /^k/i) # simpler
 				@io[:keep_alive] = true
-				out << "Connection: Keep-Alive\r\nKeep-Alive: timeout=5\r\n"
+				out << "Connection: Keep-Alive\r\nKeep-Alive: timeout=5\r\n".freeze
 			else
-				@headers['connection'] ||= 'close'
+				@headers['connection'.freeze] ||= 'close'.freeze
 			end
 
-			if @headers['content-length']
+			if @headers['content-length'.freeze]
 				@chunked = false
 			else
 				@chunked = true
-				out << "Transfer-Encoding: chunked\r\n"
+				out << "Transfer-Encoding: chunked\r\n".freeze
 			end
 			@headers.each {|k,v| out << "#{k.to_s}: #{v}\r\n"}
-			out << "Cache-Control: max-age=0, no-cache\r\n" unless @headers['cache-control']
+			out << "Cache-Control: max-age=0, no-cache\r\n".freeze unless @headers['cache-control'.freeze]
 			@cookies.each {|k,v| out << "Set-Cookie: #{k.to_s}=#{v.to_s}\r\n"}
 			out << "\r\n"
 
@@ -375,7 +378,7 @@ module GRHttp
 		def start_streaming
 			raise "Cannot start streaming after headers were sent!" if headers_sent?
 			@finished = @chunked = true
-			headers['connection'] = 'Close'
+			headers['connection'.freeze] = 'Close'.freeze
 			@io[:http_sblocks_count] ||= 0
 			send nil
 		end
