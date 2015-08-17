@@ -47,17 +47,17 @@ module GRHttp
 				io = request[:io]
 				io[:keep_alive] = true
 				response.status = 101
-				response['upgrade'] = 'websocket'
-				response['content-length'] = '0'
-				response['connection'] = 'Upgrade'
-				response['sec-websocket-version'] = '13'
+				response['upgrade'.freeze] = 'websocket'.freeze
+				response['content-length'.freeze] = '0'.freeze
+				response['connection'.freeze] = 'Upgrade'.freeze
+				response['sec-websocket-version'.freeze] = '13'.freeze
 				# Note that the client is only offering to use any advertised extensions
 				# and MUST NOT use them unless the server indicates that it wishes to use the extension.
 				io[:ws_extentions] = []
-				request['sec-websocket-extensions'].to_s.split(/[\s]*[,][\s]*/).each {|ex| ex = ex.split(/[\s]*;[\s]*/); io[:ws_extentions] << ex if SUPPORTED_EXTENTIONS[ ex[0] ]}
-				response['sec-websocket-extensions'] = io[:ws_extentions].map {|e| e[0] } .join (',')
-				response.headers.delete 'sec-websocket-extensions' if response['sec-websocket-extensions'].empty?
-				response['Sec-WebSocket-Accept'] = Digest::SHA1.base64digest(request['sec-websocket-key'] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')
+				request['sec-websocket-extensions'.freeze].to_s.split(/[\s]*[,][\s]*/).each {|ex| ex = ex.split(/[\s]*;[\s]*/); io[:ws_extentions] << ex if SUPPORTED_EXTENTIONS[ ex[0] ]}
+				response['sec-websocket-extensions'.freeze] = io[:ws_extentions].map {|e| e[0] } .join (',')
+				response.headers.delete 'sec-websocket-extensions'.freeze if response['sec-websocket-extensions'.freeze].empty?
+				response['Sec-WebSocket-Accept'.freeze] = Digest::SHA1.base64digest(request['sec-websocket-key'.freeze] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'.freeze)
 				response.finish
 				# GReactor.log_raw "#{@request[:client_ip]} [#{Time.now.utc}] - #{@connection.object_id} Upgraded HTTP to WebSockets.\n"
 				request.cookies.set_response nil
@@ -96,10 +96,10 @@ module GRHttp
 					header << byte_size.chr
 				elsif byte_size.bit_length <= 16					
 					header << 126.chr
-					header << [byte_size].pack('S>')
+					header << [byte_size].pack('S>'.freeze)
 				else
 					header << 127.chr
-					header << [byte_size].pack('Q>')
+					header << [byte_size].pack('Q>'.freeze)
 				end
 				io.write header
 				io.write(data) && true
@@ -194,8 +194,8 @@ module GRHttp
 
 			def self.refuse response
 				response.status = 400
-				response['sec-websocket-extensions'] = SUPPORTED_EXTENTIONS.keys.join(', ')
-				response['sec-websocket-version'] = '13'
+				response['sec-websocket-extensions'.freeze] = SUPPORTED_EXTENTIONS.keys.join(', ')
+				response['sec-websocket-version'.freeze] = '13'.freeze
 				response.finish
 				false
 			end

@@ -144,7 +144,7 @@ module GRHttp
 		def []= header, value
 			raise 'Cannot set headers after the headers had been sent.' if headers_sent?
 			return (@headers.delete(header) && nil) if header.nil?
-			header.is_a?(String) ? header.downcase! : (header.is_a?(Symbol) ? (header = header.to_s.downcase.to_sym) : (return false))
+			header.is_a?(String) ? (header.frozen? ? header : header.downcase!) : (header.is_a?(Symbol) ? (header = header.to_s.downcase.to_sym) : (return false))
 			headers[header]	= value
 		end
 

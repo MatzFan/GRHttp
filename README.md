@@ -78,33 +78,11 @@ This is How the [Plezi framework](https://github.com/boazsegev/plezi), which use
 
 ### How does it stack up against other servers?
 
-The greatest sin is believing 'Hello World' apps are a good benchmark - they are NOT. For instance, replacing my Thin server on a production app with GRHttp had **less then a 4% impact** and added Websockets to the mix... In the end of the day, the server is usually NOT the bottleneck.
+The greatest sin is believing 'Hello World' apps are a good benchmark - they are NOT. For instance, replacing my Thin server on a production app with GRHttp had no meaningful and added Websockets to the mix... In the end of the day, the server is usually NOT the bottleneck.
 
 But since "Hello World" apps the common way to isolate the server component, I tried doing some benchmarking and was fairly happy with the results.
 
-Although GRHttp\* does more for your application, I felt that it still performs quite well as a Rack server. Here is a quick comparison I ran on my MacBook Pro, on Ruby MRI v. ruby 2.2.2p95:
-
-| Server   | Req/Sec | Remarks |
-|----------|---------|---------|
-| Thin (R) | 2,755.31 |  On Rack   |
-| Thin (N) | 11,388.63|  Native   |
-| Puma (R) | 2,906.29 |  On Rack  |
-| Puma (N) | 9,524.93 |  Native  |
-| Webrick  | 778.56  | Don't use! |
-| Unicorn (N) | 1,649.20 | Unicorn runs native, not Rack |
-| Passenger (N) | ~11,095 | Passanger native on nginx, not Rack |
-|----------|---------|---------|
-| GRHttp\*\* (R)| 2,533.06 | Running a Rack app |
-| GRHttp\*\* (N)| 7,725.65 | Running a native app |
-| GRHttp\*\* (Hybrid)| 2,356.97(R) | Rack path on the hybrid app above|
-| GRHttp\*\* (Hybrid)| 7,835.20(N) | Native path on the hybrid app above|
-
-
-\*\* GReactor's forking was disabled for these tests, but GRHttp's performance is far improved when allowing it to fork the server to sub-processes using: `GR::Settings.set_forking 8` (I have 8 cores).
-
-It should be noted that some of the servers, such as Thin, only logged errors while GRHttp logged every request. Disabling the GRHttp logging added approximately a 20% performance boost to the native app (almost 10K req/sec).
-
-Also, some of the numbers seemed off to me... While the hybrid app ranning a bit faster seems to be a statistical deviation, I have no explanation as to Unicorn's slowness. I suggest you run your own benchmarks.
+But... Since every update might change the numbers, I removed the benchmarks from this README file. You can run the benchmarks on your own using the following code and see for yourself:
 
 This was the Rackapp tested:
 
@@ -121,6 +99,7 @@ The native GRHttp app tested was a terminal command:
 
       $ ruby -rgrhttp -e "GRHttp.start { GRHttp.listen {'Hello from GRHttp :-)'} }"
 
+The hibrid-app tested was the code in the previous section.
 
 Benchmarks were executed using `wrk` since not all servers answered `ab` (the issue is probably due to `close` vs. `keep-alive` connections over HTTP/1 while `wrk` uses HTTP/1.1):
 

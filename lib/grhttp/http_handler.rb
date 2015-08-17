@@ -16,8 +16,7 @@ module GRHttp
 			def call io
 				data = StringIO.new io.read.to_s
 				until data.eof?
-					if HTTP._parse_http io, data
-						request = io[:request]; io[:request] = nil
+					if request = HTTP._parse_http(io, data)
 						response = HTTPResponse.new request
 						break if io.io.closed?
 						begin

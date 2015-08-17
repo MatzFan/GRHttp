@@ -277,6 +277,7 @@ module GRHttp
 					request[:body_complete] = true
 				end
 			end
+			false
 			_finialize_request request if request[:body_complete]
 		end
 
@@ -297,16 +298,15 @@ module GRHttp
 			HTTP.extract_params tmp[1].split(PARAM_SPLIT_REGX), (request[:params] ||= {}) if tmp[1]
 			HTTP._read_body request if request[:body]
 
+			request[:io][:request] = nil
 
 			#check for server-responses
 			case request.request_method
 			when 'TRACE'.freeze
-				request[:io][:request] = nil
 				request[:io].close
 				return false
 			when 'OPTIONS'.freeze
 				response = HTTPResponse.new request
-				request[:io][:request] = nil
 				response[:Allow] = 'GET,HEAD,POST,PUT,DELETE,OPTIONS'.freeze
 				response['access-control-allow-origin'.freeze] = '*'
 				response['content-length'.freeze] = 0
@@ -314,7 +314,7 @@ module GRHttp
 				return false
 			end
 
-			true
+			request
 
 			# if m = request[:query].match FULL_QUARY_REGEX
 				# request[:requested_protocol] = m[1] || request['x-forwarded-proto'] || ( request[:io].ssl? ? 'https' : 'http')
