@@ -117,7 +117,7 @@ module GRHttp
 			'SCRIPT_NAME'		=> ''.force_encoding('ASCII-8BIT'),
 			'rack.logger'		=> GReactor,
 			'rack.multithread'	=> true,
-			'rack.multiprocess'	=> (GR::Settings.forking?),
+			'rack.multiprocess'	=> (GReactor.forking?),
 			# 'rack.hijack?'		=> false,
 			# 'rack.hijack_io'	=> nil,
 			'rack.run_once'		=> false

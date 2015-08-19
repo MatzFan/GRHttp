@@ -5,6 +5,7 @@ require 'uri'
 require 'securerandom'
 require 'stringio'
 require 'tmpdir'
+require 'zlib'
 
 require 'greactor'
 
@@ -27,6 +28,8 @@ require "grhttp/http_response"
 require "grhttp/api"
 
 require "grhttp/rack_support"
+
+require "grhttp/extensions/permessage_deflate"
 
 # please read the {file:README.md} file for an introduction to GRHttp.
 #

@@ -18,7 +18,7 @@ module GRHttp
 
 			end
 			# This method is called by the reactor after the connection is closed.
-			def on_disconnect io
+			def on_close io
 				h = io[:websocket_handler]
 				h.on_close(WSEvent.new(io, nil)) if h.respond_to? :on_close
 			end
@@ -54,9 +54,10 @@ module GRHttp
 				# Note that the client is only offering to use any advertised extensions
 				# and MUST NOT use them unless the server indicates that it wishes to use the extension.
 				io[:ws_extentions] = []
-				request['sec-websocket-extensions'.freeze].to_s.split(/[\s]*[,][\s]*/).each {|ex| ex = ex.split(/[\s]*;[\s]*/); io[:ws_extentions] << ex if SUPPORTED_EXTENTIONS[ ex[0] ]}
-				response['sec-websocket-extensions'.freeze] = io[:ws_extentions].map {|e| e[0] } .join (',')
-				response.headers.delete 'sec-websocket-extensions'.freeze if response['sec-websocket-extensions'.freeze].empty?
+				ext = []
+				request['sec-websocket-extensions'.freeze].to_s.split(/[\s]*[,][\s]*/).each {|ex| ex = ex.split(/[\s]*;[\s]*/); (ext << ex[0]) && ( ( tmp = SUPPORTED_EXTENTIONS[ ex[0] ].call(ex[1..-1]) ) && (io[:ws_extentions] << tmp) ) }
+				ext.compact!
+				response['sec-websocket-extensions'.freeze] = ext.join(', ') if ext.any?
 				response['Sec-WebSocket-Accept'.freeze] = Digest::SHA1.base64digest(request['sec-websocket-key'.freeze] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'.freeze)
 				response.finish
 				# GReactor.log_raw "#{@request[:client_ip]} [#{Time.now.utc}] - #{@connection.object_id} Upgraded HTTP to WebSockets.\n"
@@ -78,6 +79,9 @@ module GRHttp
 			# sends the data as one (or more) Websocket frames
 			def send_data io, data, op_code = nil, fin = true
 				return false if !data || data.empty?
+				# apply extenetions to the frame
+				ext = 0
+				io[:ws_extentions].each { |ex| ext |= ex.edit_message data } unless op_code
 				op_code ||= (data.encoding == ::Encoding::UTF_8 ? 1 : 2)
 				byte_size = data.bytesize
 				if byte_size > (FRAME_SIZE_LIMIT+2)
@@ -86,10 +90,8 @@ module GRHttp
 					send_data( io, data.slice!( 0...FRAME_SIZE_LIMIT ), op_code, data.empty?) && op_code = 0 until data.empty?
 					# sections.times { |i| send_data io, data.slice!( 0...FRAME_SIZE_LIMIT ), op_code, (i==sections) }
 				end
-				# apply extenetions to the frame
-				ext = 0
 				# # ext |= call each io.protocol.extenetions with data #changes data and returns flags to be set
-				# io[:ws_extentions].each { |ex| ext |= WSProtocol::SUPPORTED_EXTENTIONS[ex[0]][2].call data, ex[1..-1]}
+				io[:ws_extentions].each { |ex| ext |= ex.edit_frame data }
 				header = ( (fin ? 0b10000000 : 0) | (op_code & 0b00001111) | ext).chr.force_encoding(::Encoding::ASCII_8BIT)
 
 				if byte_size < 125
@@ -333,7 +335,7 @@ module GRHttp
 			# handles the completed frame and sends a message to the handler once all the data has arrived.
 			def self.complete_frame io
 				parser = io[:ws_parser]
-				io[:ws_extentions].each {|ex| SUPPORTED_EXTENTIONS[ex[0]][1].call(parser[:body], ex[1..-1]) if SUPPORTED_EXTENTIONS[ex[0]]}
+				io[:ws_extentions].each {|ex| ex.parse(parser) }
 
 				case parser[:op_code]
 				when 9 # ping

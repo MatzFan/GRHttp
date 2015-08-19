@@ -126,7 +126,7 @@ module GRHttp
 		def << str
 			@body ? @body.push(str) : (request.head? ? false :  send_body(str))
 			self
-			# send if streaming?
+			# write if streaming?
 		end
 
 		# returns a response header, if set.
@@ -374,13 +374,13 @@ module GRHttp
 		# (send its data and maybe close the connection).
 		#
 		# NOTICE! :: If HTTP streaming is set, you will need to manually call `response.finish_streaming`
-		# or the connection will not close properly.
+		# or the connection will not close properly and the client will be left expecting more information.
 		def start_streaming
 			raise "Cannot start streaming after headers were sent!" if headers_sent?
 			@finished = @chunked = true
 			headers['connection'.freeze] = 'Close'.freeze
 			@io[:http_sblocks_count] ||= 0
-			send nil
+			write nil
 		end
 
 		# Sends the complete response signal for a streaming response.

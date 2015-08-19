@@ -66,7 +66,7 @@ upgrade_handler = Proc.new {|i, o| MyServer unless i.path == '/refuse'}
 
 # GR.create_logger nil
 
-GRHttp.start do
+GRHttp.start(8) do
     GRHttp.listen upgrade_handler: upgrade_handler, http_handler: MyServer
 end
 
