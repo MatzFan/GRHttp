@@ -87,7 +87,7 @@ module GRHttp
 			start_streaming unless @finished
 			@io[:http_sblocks_count] += 1
 			@stream_proc ||= Proc.new { |block| raise "IO closed. Streaming failed." if io.io.closed?; block.call; io[:http_sblocks_count] -= 1; finish_streaming }
-			GReactor.queue [block], @stream_proc
+			GReactor.queue @stream_proc, [block]
 		end
 
 		# Creates and returns the session storage object.

@@ -163,9 +163,9 @@ module GRHttp
 			def broadcast data, ignore_io = nil
 				if ignore_io
 					ig_id = ignore_io.object_id
-					GReactor.each {|io| GReactor.queue [io, data], DO_BROADCAST_PROC unless io.object_id == ig_id}
+					GReactor.each {|io| next unless io.is_a?(::GReactor::BasicIO); GReactor.queue DO_BROADCAST_PROC, [io, data] unless io.object_id == ig_id}
 				else
-					GReactor.each {|io| GReactor.queue [io, data], DO_BROADCAST_PROC }
+					GReactor.each {|io| next unless io.is_a?(::GReactor::BasicIO); GReactor.queue DO_BROADCAST_PROC, [io, data] }
 				end
 				true
 			end
@@ -180,7 +180,7 @@ module GRHttp
 			# @return [true, false] Returns true if the object was found and the unicast was sent (the task will be executed asynchronously once the unicast was sent).
 			def unicast uuid, data
 				return false unless uuid && data
-				GReactor.each {|io| next unless io[:uuid] == uuid; GReactor.queue [io, data], DO_BROADCAST_PROC; return true}
+				GReactor.each {|io| next unless io.is_a?(::GReactor::BasicIO) && io[:uuid] == uuid; GReactor.queue DO_BROADCAST_PROC, [io, data]; return true}
 				false
 			end
 
@@ -355,7 +355,7 @@ module GRHttp
 					# handle parser[:op_code] == 0 / fin == false (continue a frame that hasn't ended yet)
 					if parser[:fin]
 						HTTP.make_utf8! parser[:message] if parser[:p_op_code] == 1
-						GReactor.queue [io[:websocket_handler], WSEvent.new(io, parser[:message])], COMPLETE_FRAME_PROC
+						GReactor.queue COMPLETE_FRAME_PROC, [io[:websocket_handler], WSEvent.new(io, parser[:message])]
 						parser[:message] = nil
 						parser[:p_op_code] = nil
 					end

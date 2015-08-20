@@ -143,6 +143,7 @@ module GRHttp
 			GReactor.start unless GReactor.running?
 			socket = nil
 			options[:on_message] ||= block
+			options[:reactor] = ::GReactor
 			raise "No #on_message handler defined! please pass a block or define an #on_message handler!" unless options[:on_message]
 			options[:handler] = GRHttp::Base::WSHandler
 			url = URI.parse(url) unless url.is_a?(URI)
@@ -157,51 +158,51 @@ module GRHttp
 			url.path = '/' if url.path.to_s.empty?
 			socket = TCPSocket.new(url.host, url.port)
 			io = options[:io] = connection_type.new(socket, options)
+			io.locker.synchronize do
 
-			# prep custom headers
-			custom_headers = ''
-			custom_headers = options[:headers] if options[:headers].is_a?(String)
-			options[:headers].each {|k, v| custom_headers << "#{k.to_s}: #{v.to_s}\r\n"} if options[:headers].is_a?(Hash)
-			options[:cookies].each {|k, v| raise 'Illegal cookie name' if k.to_s.match(/[\x00-\x20\(\)<>@,;:\\\"\/\[\]\?\=\{\}\s]/); custom_headers << "Cookie: #{ k }=#{ HTTP.encode_url v }\r\n"} if options[:cookies].is_a?(Hash)
+				# prep custom headers
+				custom_headers = ''
+				custom_headers = options[:headers] if options[:headers].is_a?(String)
+				options[:headers].each {|k, v| custom_headers << "#{k.to_s}: #{v.to_s}\r\n"} if options[:headers].is_a?(Hash)
+				options[:cookies].each {|k, v| raise 'Illegal cookie name' if k.to_s.match(/[\x00-\x20\(\)<>@,;:\\\"\/\[\]\?\=\{\}\s]/); custom_headers << "Cookie: #{ k }=#{ HTTP.encode_url v }\r\n"} if options[:cookies].is_a?(Hash)
 
-			# send protocol upgrade request
-			websocket_key = [(Array.new(16) {rand 255} .pack 'c*' )].pack('m0*')
-			io.write "GET #{url.path}#{url.query.to_s.empty? ? '' : ('?' + url.query)} HTTP/1.1\r\nHost: #{url.host}#{url.port ? (':'+url.port.to_s) : ''}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nOrigin: #{options[:ssl_client] ? 'https' : 'http'}://#{url.host}\r\nSec-WebSocket-Key: #{websocket_key}\r\nSec-WebSocket-Version: 13\r\n#{custom_headers}\r\n"
-			# wait for answer - make sure we don't over-read
-			# (a websocket message might be sent immidiately after connection is established)
-			reply = ''
-			reply.force_encoding(::Encoding::ASCII_8BIT)
-			stop_time = Time.now + (options[:timeout] || 5)
-			stop_reply = "\r\n\r\n"
-			sleep 0.2
-			until reply[-4..-1] == stop_reply
-				add = io.read(1)
-				add ? (reply << add) : (sleep 0.2)
-				raise "connections was closed" if io.io.closed?
-				raise "Websocket client handshake timed out (HTTP reply not recieved)\n\n Got Only: #{reply}" if Time.now >= stop_time
+				# send protocol upgrade request
+				websocket_key = [(Array.new(16) {rand 255} .pack 'c*' )].pack('m0*')
+				io.write "GET #{url.path}#{url.query.to_s.empty? ? '' : ('?' + url.query)} HTTP/1.1\r\nHost: #{url.host}#{url.port ? (':'+url.port.to_s) : ''}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nOrigin: #{options[:ssl_client] ? 'https' : 'http'}://#{url.host}\r\nSec-WebSocket-Key: #{websocket_key}\r\nSec-WebSocket-Version: 13\r\n#{custom_headers}\r\n"
+				# wait for answer - make sure we don't over-read
+				# (a websocket message might be sent immidiately after connection is established)
+				reply = ''
+				reply.force_encoding(::Encoding::ASCII_8BIT)
+				stop_time = Time.now + (options[:timeout] || 5)
+				stop_reply = "\r\n\r\n"
+				sleep 0.2
+				until reply[-4..-1] == stop_reply
+					add = io.read(1)
+					add ? (reply << add) : (sleep 0.2)
+					raise "connections was closed" if io.io.closed?
+					raise "Websocket client handshake timed out (HTTP reply not recieved)\n\n Got Only: #{reply}" if Time.now >= stop_time
+				end
+				# review reply
+				raise "Connection Refused. Reply was:\r\n #{reply}" unless reply.lines[0].match(/^HTTP\/[\d\.]+ 101/i)
+				raise 'Websocket Key Authentication failed.' unless reply.match(/^Sec-WebSocket-Accept:[\s]*([^\s]*)/i) && reply.match(/^Sec-WebSocket-Accept:[\s]*([^\s]*)/i)[1] == Digest::SHA1.base64digest(websocket_key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')
+				# read the body's data and parse any incoming data.
+				request = io[:request] ||= HTTPRequest.new(io)
+				request[:method] = 'GET'
+				request['host'] = "#{url.host}:#{url.port}"
+				request[:query] = url.path
+				request[:version] = 'HTTP/1.1'
+				# reply.gsub! /set-cookie/i, 'Cookie'
+				reply = StringIO.new reply
+				reply.gets
+				HTTP._parse_http io, reply
+
+				# set-up handler response object. 
+				io[:ws_extentions] = [].freeze
+				(io[:websocket_handler] = WSClient.new request).on_open(WSEvent.new(io, nil))
 			end
-			# review reply
-			raise "Connection Refused. Reply was:\r\n #{reply}" unless reply.lines[0].match(/^HTTP\/[\d\.]+ 101/i)
-			raise 'Websocket Key Authentication failed.' unless reply.match(/^Sec-WebSocket-Accept:[\s]*([^\s]*)/i) && reply.match(/^Sec-WebSocket-Accept:[\s]*([^\s]*)/i)[1] == Digest::SHA1.base64digest(websocket_key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')
-			# read the body's data and parse any incoming data.
-			request = io[:request] ||= HTTPRequest.new(io)
-			request[:method] = 'GET'
-			request['host'] = "#{url.host}:#{url.port}"
-			request[:query] = url.path
-			request[:version] = 'HTTP/1.1'
-			# reply.gsub! /set-cookie/i, 'Cookie'
-			reply = StringIO.new reply
-			reply.gets
-			HTTP._parse_http io, reply
-
-			# set-up handler response object. 
-			io[:ws_extentions] = [].freeze
-			(io[:websocket_handler] = WSClient.new io[:request]).on_open(WSEvent.new(io, nil))
-			# add the socket to the EventMachine IO reactor
-			GReactor.add_io io.io, io
 			return io[:websocket_handler]
 			rescue => e
-				socket.close if socket
+				io ? io.close : (socket ? socket.close : nil )
 				raise e
 		end
 		class << self
