@@ -219,7 +219,7 @@ module GRHttp
 			unless request[:method]
 				request[:time_recieved] = Time.now
 				request[:method], request[:query], request[:version] = data.gets.split /[\s]+/
-				return (data.pos = data.length) && io.close && false unless request[:method].match(HTTP_METHODS_REGEXP) && request[:query] && request[:version]				
+				return (data.pos = data.length) && GReactor.error('Refusing malformed request') &&  io.close && false unless request[:method].match(HTTP_METHODS_REGEXP) && request[:query] && request[:version]				
 			end
 			until request[:headers_complete] || data.eof?
 				header = data.gets
