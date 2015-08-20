@@ -350,7 +350,7 @@ module GRHttp
 			if @body && @body.is_a?(Array)
 				@body = @body.join 
 			end
-			send_body(@body) && body.clear if @body && !@body.empty? && !request.head?
+			send_body(@body) && (@body.frozen? ? true : @body.clear) if @body && !@body.empty? && !request.head?
 			@body = nil
 			true
 		end

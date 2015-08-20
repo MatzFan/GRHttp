@@ -55,7 +55,7 @@ module GRHttp
 				# and MUST NOT use them unless the server indicates that it wishes to use the extension.
 				io[:ws_extentions] = []
 				ext = []
-				request['sec-websocket-extensions'.freeze].to_s.split(/[\s]*[,][\s]*/).each {|ex| ex = ex.split(/[\s]*;[\s]*/); (ext << ex[0]) && ( ( tmp = SUPPORTED_EXTENTIONS[ ex[0] ].call(ex[1..-1]) ) && (io[:ws_extentions] << tmp) ) }
+				request['sec-websocket-extensions'.freeze].to_s.split(/[\s]*[,][\s]*/).each {|ex| ex = ex.split(/[\s]*;[\s]*/); ( ( tmp = SUPPORTED_EXTENTIONS[ ex[0] ].call(ex[1..-1]) ) && (io[:ws_extentions] << tmp) && (ext << ex[0]) ) if SUPPORTED_EXTENTIONS[ ex[0] ] }
 				ext.compact!
 				response['sec-websocket-extensions'.freeze] = ext.join(', ') if ext.any?
 				response['Sec-WebSocket-Accept'.freeze] = Digest::SHA1.base64digest(request['sec-websocket-key'.freeze] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'.freeze)
