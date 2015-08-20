@@ -6,6 +6,8 @@ Change log v.0.1.0
 
 **Update**: Update the GReactor version to version 0.1.0, adopting it's new IO API.
 
+**Update**: Updated the autoping feature, as well as some of the logging information supplied. retouched the Rack support, reviewed the FileSession initialization (it's faster now), prepared some groundwork for websocket extentions... all sorts of goodies under the hood.
+
 **Fix**: Fixed an issue with the websocket connect shortcut method (`GRHttp.ws_connect` vs. `GRHttp::WSClient.connect`), which caused options passed to the shortcut to be ignored. This is now fixed.
 
 ***
