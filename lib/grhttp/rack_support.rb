@@ -17,16 +17,15 @@ module GRHttp
 
 				GRHttp.listen port: options[:Port], bind: options[:Host], http_handler: self if add
 
-				GReactor.log_raw "\r\nStarting GRHttp v. #{GRHttp::VERSION} with GReactor #{GReactor::VERSION}.\r\n"
-				GReactor.log_raw "\r\nUse ^C to exit\r\n"
+				GReactor.log_raw "\r\nStarting GRHttp v. #{GRHttp::VERSION} with GReactor #{GReactor::VERSION} for Rack.\r\nUse ^C to exit\r\n"
 
-				# if GReactor::Settings.forking?
-				# 	GReactor::Settings.set_forking false
+				# if GReactor.forking?
+				# 	GReactor.forking 0
 				# 	GReactor.warn 'Forking GRHttp is disabled when using Rack.'
 				# end
 
-				# GReactor.instance_exec { stop_listeners }
 				GReactor.stop if GReactor.running?
+				GReactor.start(8)
 				GReactor.join {GReactor.log_raw "\r\nGRHttp starting shutdown\r\n"}
 				GReactor.log_raw "\r\nGRHttp completed shutdown\r\n"
 				true
@@ -92,7 +91,7 @@ module GRHttp
 			env['CONTENT_TYPE'.freeze] = env.delete 'HTTP_CONTENT_TYPE'.freeze if env['HTTP_CONTENT_TYPE'.freeze]
 			env['HTTP_VERSION'.freeze] = "HTTP/#{request[:version].to_s}"
 			env['QUERY_STRING'.freeze] ||= ''
-			env['rack.errors'.freeze] = StringIO.new(''),
+			env['rack.errors'.freeze] = StringIO.new('')
 			env
 		end
 
