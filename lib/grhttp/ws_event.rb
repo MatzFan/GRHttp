@@ -79,13 +79,15 @@ module GRHttp
 
 		# Starts auto-pinging every set interval (in seconds), until the websocket closes - this cannot be stopped once started.
 		def autoping interval = 45
-			AUTOPING_PROC.call self, interval
+			@io[:autoping].stop! if @io[:autoping]
+			@io[:autoping] = GReactor.run_every interval, -1, self, &AUTOPING_PROC if interval > 0
 			true
 		end
 
 		# Starts auto-ponging every set interval (in seconds), until the websocket closes - this cannot be stopped once started.
 		def autopong interval = 45
-			AUTOPONG_PROC.call self, interval
+			@io[:autoping].stop! if @io[:autoping]
+			@io[:autoping] = GReactor.run_every interval, -1, self, &AUTOPONG_PROC if interval > 0
 			true
 		end
 
@@ -93,8 +95,8 @@ module GRHttp
 		PONG_FRAME = "\x8A\x00".freeze
 		PING_FRAME = "\x89\x00".freeze
 		CLOSE_FRAME = "\x88\x00".freeze
-		AUTOPING_PROC = Proc.new {|ws, i| GReactor.run_after i, ws.ping, i, &AUTOPING_PROC unless ws.closed?}
-		AUTOPONG_PROC = Proc.new {|ws, i| GReactor.run_after i, ws.pong, i, &AUTOPONG_PROC unless ws.closed?}
+		AUTOPING_PROC = Proc.new {|ws, timer| ws.closed? ?  timer.stop! : ws.pong }
+		AUTOPONG_PROC = Proc.new {|ws, timer| ws.closed? ?  timer.stop! : ws.pong }
 	end
 end
 

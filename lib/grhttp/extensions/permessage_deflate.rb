@@ -28,6 +28,6 @@ module GRHttp
 				nil
 			end
 		end
-		# GRHttp.register_ws_extention 'permessage-deflate', WSDeflateExt
+		GRHttp.register_ws_extention 'permessage-deflate', WSDeflateExt
 	end
 end
