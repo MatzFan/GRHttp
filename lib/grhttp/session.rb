@@ -12,7 +12,6 @@ module GRHttp
 				def initialize id
 					@filename = File.join Dir.tmpdir, "grhttp_#{GRHttp.session_token}_#{id}"
 					# load data from tmp-file
-					load
 					@data ||= {}
 				end
 				# Get a key from the session data store.
