@@ -75,6 +75,11 @@ module GRHttp
 			@response.io.io.closed?
 		end
 
+		# checks if this is an SSL websocket connection.
+		def ssl?
+			@response.ssl?
+		end
+
 		# return the HTTP's handshake data, including any cookies sent by the server.
 		def request
 			@request
@@ -142,6 +147,7 @@ module GRHttp
 		def self.connect url, options={}, &block
 			GReactor.start unless GReactor.running?
 			socket = nil
+			options = options.dup
 			options[:on_message] ||= block
 			options[:reactor] = ::GReactor
 			raise "No #on_message handler defined! please pass a block or define an #on_message handler!" unless options[:on_message]

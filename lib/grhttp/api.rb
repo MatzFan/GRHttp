@@ -34,7 +34,7 @@ module GRHttp
 	#
 	# this is actually a shortcut for {GRHttp::WSClient.connect}.
 	def ws_connect url, options={}, &block
-		GRHttp::WSClient.connect url, options={}, &block
+		GRHttp::WSClient.connect url, options, &block
 	end
 
 	# Registers a websocket extension to be used by GRHttp when receiving a websocket connection.

@@ -35,6 +35,10 @@ module GRHttp
 		def closed?
 			@io.io.closed?
 		end
+		# checks if this is an SSL websocket connection.
+		def ssl?
+			@io.ssl?
+		end
 		# Sends a ping and returns he WSEvent object.
 		def ping
 			@io.write PING_FRAME

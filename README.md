@@ -222,6 +222,88 @@ end
 * [Test the `/refuse` path at http://localhost:3000/refuse](http://localhost:3000/refuse).
 * [Test the wesocket echo server using http://websocket.org/echo.html](http://websocket.org/echo.html).
 
+
+## Websocket Client
+
+GRHttp can also act as a client for either a semi-synchronous or asynchronous websocket connections.
+
+GRHttp's websocket client was designed for simplicity, as it started it's life as a testing tool.
+
+Here is a very simple implementation that leverages the fact that `GRHttp.ws_connect` will hang until a connection is established - making the code very simple to write:
+
+```ruby
+require 'grhttp'
+
+client = GRHttp.ws_connect 'ws://echo.websocket.org' do |ws|
+    puts "Received >> #{ws.data}"
+    ws.close if ws.data =~ /^(bye|quit|exit|close)/i
+end
+
+client << "Echo this!"
+
+client << "Bye" # => true
+
+client.closed?
+
+client << 'test' # => false
+
+```
+
+The block passed acted as our `on_message` callback. But what about an `on_close` callback, or an `on_connect` one... and what about some cookies?
+
+Also, what if we don't want our code to block? Or maybe we want to connect to an SSL connection?
+
+Okay, Okay... So many questions. No worries, here's a more complete example:
+
+
+```ruby
+require 'grhttp'
+
+# Start GRHttp, if it isn't running in the background already.
+# We're about to use asynchronous code.
+number_of_threads = 30
+GRHttp.start number_of_threads
+
+# the following options will be used to setup the connection
+options = {}
+
+# The on_close callback
+options[:on_close] = Proc.new {|ws| puts 'Connection closed.' }
+
+# The on_open callback
+options[:on_open] = Proc.new do |ws|
+    # notify that the connection is open
+    puts 'Connection opened.'
+    # use the ws.ssl? method to make sure it's SSL
+    puts 'This is an SSL connection' if ws.ssl?
+    # write some stuff
+    ws << 'Hello World!'
+    10.times {|i|  ws << "Countdown: #{10-i}\n"}
+    # say goodbye
+    ws << 'Bye Bye'
+end
+
+# The on_message callback (instead of using a block like before)
+options[:on_message] = Proc.new do |ws|
+    # print out any incoming data
+    puts "Received >> #{ws.data}"
+    # close if we received a goodbye keyword
+    ws.close if ws.data =~ /^(bye|quit|exit|close|goodbye)/i
+end
+
+# Cookies anyone?
+options[:cookies] = {my_cookie_name: 'my cookie value'}
+
+# Run the connection asynchronously
+GRHttp.run_async { GRHttp.ws_connect 'wss://echo.websocket.org', options }
+
+# Block, so we can see our code execute.
+puts "Press ^C to stop the server"
+GRHttp.join
+```
+
+Easy.
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake false` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

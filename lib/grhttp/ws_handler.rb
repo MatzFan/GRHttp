@@ -79,6 +79,7 @@ module GRHttp
 			# sends the data as one (or more) Websocket frames
 			def send_data io, data, op_code = nil, fin = true
 				return false if !data || data.empty?
+				return false if io.nil? || io.closed?
 				# apply extenetions to the frame
 				ext = 0
 				io[:ws_extentions].each { |ex| ext |= ex.edit_message data } unless op_code
