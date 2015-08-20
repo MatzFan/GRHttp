@@ -24,7 +24,7 @@ module GRHttp
 				# 	GReactor.warn 'Forking GRHttp is disabled when using Rack.'
 				# end
 
-				GReactor.stop if GReactor.running?
+				GReactor.stop.join if GReactor.running?
 				GReactor.start(8)
 				GReactor.join {GReactor.log_raw "\r\nGRHttp starting shutdown\r\n"}
 				GReactor.log_raw "\r\nGRHttp completed shutdown\r\n"
@@ -39,7 +39,6 @@ module GRHttp
 				response.run_rack @app
 			end
 		end
-		::Rack::Handler.register( 'grhttp', 'GRHttp::Base::Rack') if defined?(::Rack)
 	end
 
 	class HTTPResponse
@@ -53,10 +52,13 @@ module GRHttp
 			@headers.clear
 			@headers.freeze
 
-			# fix connection header
-			if res[1]['Connection'.freeze] =~ /^k/i || (@request[:version].to_f > 1 && @request['connection'.freeze].nil?) || @request['connection'.freeze] =~ /^k/i
+			# fix connection header? - Default to closing the connection rather than keep-alive. Turbolinks and Rack have issues.
+			# if res[1]['Connection'.freeze] =~ /^k/i || (@request[:version].to_f > 1 && @request['connection'.freeze].nil?) || @request['connection'.freeze] =~ /^k/i
+			if res[1]['Connection'.freeze] =~ /^k/i || (@request['connection'.freeze] && @request['connection'.freeze] =~ /^k/i)
 				@io[:keep_alive] = true
-				res[1]['Connection'.freeze] ||= "Keep-Alive\r\nKeep-Alive: timeout=5".freeze
+				# res[1]['Connection'.freeze] ||= "Keep-Alive\r\nKeep-Alive: timeout=5".freeze
+			else
+				res[1]['Connection'.freeze] ||= "close".freeze unless @io[:keep_alive]
 			end
 
 			# @io[:keep_alive] = true if res[1]['Connection'].to_s.match(/^k/i)
@@ -135,6 +137,7 @@ begin
 rescue Exception => e
 
 end
+::Rack::Handler.register( 'grhttp', 'GRHttp::Base::Rack') if defined?(::Rack)
 
 ######
 ## example requests
