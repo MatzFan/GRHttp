@@ -44,11 +44,15 @@ module GRHttp
 	# connection_handler:: An object that answers to `call(array)` that will recieve an Array of all the extension's settings requested by the client (could be empty) and return an extention object that answers the methods `parse(parser_hash)` and `edit(string)`. i.e. `-> {|args| MyExtention.new(args) if MyExtention.supports?(args)}
 	#
 	# Extension objects should answer the methods:
-	# parse(parser_hash):: accepts a message parser hash which includes the :rsv1, :rsv2, :rsv3 and :body keys (and values). :rsvX values are `true` or `false`. :body is the unmasked string of the current frame. :message is the string of all the _prior_ messages in the frame's group (excluding :body). :fin states whether or not this is the final frame in it's frame group. The method is expected to edit the data in the hash in case an edit is required. The return value is ignored.
+	# name:: returns the full name of the extention and any arguments, as will be passed along to the client during the handshake.
+	# parse_frame(parser_hash):: accepts a message parser hash which includes the :rsv1, :rsv2, :rsv3 and :body keys (and values). :rsvX values are `true` or `false`. :body is the unmasked string of the current frame. :message is the string of all the _prior_ messages in the frame's group (excluding :body). :fin states whether or not this is the final frame in it's frame group. The method is expected to edit the data in the hash in case an edit is required. The return value is ignored.
+	# parse_message(parser_hash):: accepts a message parser hash which includes the :rsv1, :rsv2, :rsv3 and :message keys (and values). :rsvX values are `true` or `false`. :message is the complete string of the current message (all the frames). :fin should be true at this point. The method is expected to edit the data in the hash in case an edit is required. The return value is ignored.
+	# edit_frame(buffer):: accepts one frame's buffer (String) being sent (UTF-8 encoding indicated the frame is text, otherwise the message will be sent as binary data). The method is expected to edit the buffer in place (i.e. `str.clear; str << 'new data') and return the extension flag for a Binary OR operation (i.e. (0b1 << 6) == :rsv1).
 	# edit_message(buffer):: accepts the whole message buffer (String) being sent (UTF-8 encoding indicated the message is text, otherwise the message will be sent as binary data). The method is expected to edit the string in place (i.e. `str.clear; str << 'new data') and return the extension flag for a Binary OR operation (i.e. (0b1 << 6) == :rsv1).
-	# edit_farme(buffer):: accepts one frame's buffer (String) being sent (UTF-8 encoding indicated the frame is text, otherwise the message will be sent as binary data). The method is expected to edit the buffer in place (i.e. `str.clear; str << 'new data') and return the extension flag for a Binary OR operation (i.e. (0b1 << 6) == :rsv1).
+	# close:: called once the websocket is closed, to release any resources.
 	#
-	# `edit_message` and `edit_farme` MUST return a Fixnum object. They should return 0 if no flag is set.
+	# `edit_message` and `edit_farme` MUST return a Fixnum object. They should return 0 if no flag is set. The will both be called for the same string if the message is only composed of one frame.
+	#
 	# Extension objects are expected to preserve state. In example, they should store the settings requested by the client and passed to the connection_handler.
 	def register_ws_extention name, handler
 		GRHttp::Base::WSHandler::SUPPORTED_EXTENTIONS[name] = handler

@@ -21,6 +21,7 @@ module GRHttp
 			def on_close io
 				h = io[:websocket_handler]
 				h.on_close(WSEvent.new(io, nil)) if h.respond_to? :on_close
+				io[:ws_extentions].each { |ex| ex.close }
 			end
 
 			# Sets the message byte size limit for a Websocket message. Defaults to 0 (no limit)
@@ -55,7 +56,7 @@ module GRHttp
 				# and MUST NOT use them unless the server indicates that it wishes to use the extension.
 				io[:ws_extentions] = []
 				ext = []
-				request['sec-websocket-extensions'.freeze].to_s.split(/[\s]*[,][\s]*/).each {|ex| ex = ex.split(/[\s]*;[\s]*/); ( ( tmp = SUPPORTED_EXTENTIONS[ ex[0] ].call(ex[1..-1]) ) && (io[:ws_extentions] << tmp) && (ext << ex[0]) ) if SUPPORTED_EXTENTIONS[ ex[0] ] }
+				request['sec-websocket-extensions'.freeze].to_s.split(/[\s]*[,][\s]*/).each {|ex| ex = ex.split(/[\s]*;[\s]*/); ( ( tmp = SUPPORTED_EXTENTIONS[ ex[0] ].call(ex[1..-1]) ) && (io[:ws_extentions] << tmp) && (ext << tmp.name) ) if SUPPORTED_EXTENTIONS[ ex[0] ] }
 				ext.compact!
 				response['sec-websocket-extensions'.freeze] = ext.join(', ') if ext.any?
 				response['Sec-WebSocket-Accept'.freeze] = Digest::SHA1.base64digest(request['sec-websocket-key'.freeze] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'.freeze)
@@ -82,8 +83,8 @@ module GRHttp
 				return false if io.nil? || io.closed?
 				# apply extenetions to the frame
 				ext = 0
-				io[:ws_extentions].each { |ex| ext |= ex.edit_message data } unless op_code
 				op_code ||= (data.encoding == ::Encoding::UTF_8 ? 1 : 2)
+				io[:ws_extentions].each { |ex| ext |= ex.edit_message data } unless op_code
 				byte_size = data.bytesize
 				if byte_size > (FRAME_SIZE_LIMIT+2)
 					data = data.dup
@@ -336,7 +337,7 @@ module GRHttp
 			# handles the completed frame and sends a message to the handler once all the data has arrived.
 			def self.complete_frame io
 				parser = io[:ws_parser]
-				io[:ws_extentions].each {|ex| ex.parse(parser) }
+				io[:ws_extentions].each {|ex| ex.parse_frame(parser) }
 
 				case parser[:op_code]
 				when 9 # ping
@@ -355,6 +356,7 @@ module GRHttp
 					parser[:message] ? ((parser[:message] << parser[:body]) && parser[:body].clear) : ((parser[:message] = parser[:body]) && parser[:body] = '')
 					# handle parser[:op_code] == 0 / fin == false (continue a frame that hasn't ended yet)
 					if parser[:fin]
+						io[:ws_extentions].each {|ex| ex.parse_message(parser) }
 						HTTP.make_utf8! parser[:message] if parser[:p_op_code] == 1
 						GReactor.queue COMPLETE_FRAME_PROC, [io[:websocket_handler], WSEvent.new(io, parser[:message])]
 						parser[:message] = nil
