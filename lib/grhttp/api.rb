@@ -66,6 +66,22 @@ module GRHttp
 		GRHttp::Base::WSHandler::SUPPORTED_EXTENTIONS.delete name
 	end
 
+	# Enables or disables the websocket 'permessage-deflate' extention.
+	def allow_websocket_deflate should_allow
+		if should_allow
+			register_ws_extention 'permessage-deflate', WSDeflateExt
+		else
+			remove_ws_extention 'permessage-deflate'
+		end
+	end
+	# Returns true if the 'permessage-deflate' extention is registered (enabled).
+	#
+	# @return [true, false]
+	def allow_websocket_deflate?
+		get_ws_extention('permessage-deflate') && true
+	end
+
+
 
 	# Defers any missing methods to the GReactor Library.
 	def method_missing name, *args, &block

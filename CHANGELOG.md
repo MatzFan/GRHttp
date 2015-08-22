@@ -8,6 +8,10 @@ Change log v.0.1.0
 
 **Update**: Updated the autoping feature, as well as some of the logging information supplied. retouched the Rack support, reviewed the FileSession initialization (it's faster now), prepared some groundwork for websocket extentions... all sorts of goodies under the hood.
 
+**Feature**: The Websocket extention API is now complete and it is now possible to write Websocket extentions sch as the `permessage-deflate` extention.
+
+**Feature**: The Websocket server now supports the `permessage-deflate` extention. The extention will compress UTF-8 text data (but not binary data) longer than 16 bytes. The extention is supported by default and can be disabled (unregistered) by calling: `GRHttp.allow_websocket_deflate false`
+
 **Fix**: Fixed an issue with the websocket connect shortcut method (`GRHttp.ws_connect` vs. `GRHttp::WSClient.connect`), which caused options passed to the shortcut to be ignored. This is now fixed.
 
 ***
