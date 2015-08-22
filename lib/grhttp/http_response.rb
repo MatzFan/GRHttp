@@ -66,18 +66,22 @@ module GRHttp
 		#
 		# This avoids manualy handling {#start_streaming}, {#finish_streaming} and asynchronously tasking.
 		#
-		# Every time data is sent the timout is reset. Responses longer than timeout will not be sent (but they will be processed). 
+		# Every time data is sent the timout is reset. Responses longer than timeout will not be sent (but they will be processed).
+		#
+		# Since GRHttp is likely to be multi-threading (depending on your settings and architecture), it is important that
+		# streaming blocks are nested rather than chained. Chained streaming blocks might be executed in parallel and 
+		# suffer frome race conditions that might lead to the response being corrupted.
 		#
 		# Accepts a required block. i.e.
 		#
 		#     response.stream_async {sleep 1; response << "Hello Streaming"}
-		#     # OR, you can chain the streaming calls
+		#     # OR, you can nest (but not chain) the streaming calls
 		#     response.stream_async do
 		#       sleep 1
 		#       response << "Hello Streaming"
 		#       response.stream_async do
 		#           sleep 1
-		#           response << "Goodbye Streaming"
+		#           response << "\r\nGoodbye Streaming"
 		#       end
 		#     end
 		#
@@ -89,6 +93,38 @@ module GRHttp
 			@stream_proc ||= Proc.new { |block| raise "IO closed. Streaming failed." if io.io.closed?; block.call; io[:http_sblocks_count] -= 1; finish_streaming }
 			GReactor.queue @stream_proc, [block]
 		end
+
+		# Creates nested streaming blocks for an enumerable object. Once all streaming blocks are done, the response will automatically finish.
+		#
+		# Since streaming blocks might run in parallel, nesting the streaming blocks is important...
+		#
+		# However, manually nesting hundreds of nesting blocks is time consuming and error prone.
+		#
+		# {.sream_enum} allows you to stream an enumerable knowing that Plezi will nest the streaming blocks dynamically.
+		#
+		# Accepts:
+		# enum:: an Enumerable or an object that answers to the `to_a` method (the array will be used to stream the )
+		#
+		# If an Array is passed to the enumerable, it will be changed and emptied as the streaming progresses.
+		# So, if preserving the array is important, please create a shallow copy of the array first using the `.dup` method.
+		#
+		# i.e.:
+		#
+		#      data = "Hello world!".chars
+		#      response.stream_enum(data.each_with_index) {|c, i| response << c; sleep i/10.0 }
+		#
+		#
+		# @return [true, Exception] The method returns immidiatly with a value of true unless it is impossible to stream the response (an exception will be raised) or a block wasn't supplied.
+		def stream_enum enum, &block
+			enum = enum.to_a
+			return if enum.empty?
+			stream_async do
+				args = enum.shift
+				block.call(*args)
+				stream_enum enum, &block
+			end
+		end
+
 
 		# Creates and returns the session storage object.
 		#

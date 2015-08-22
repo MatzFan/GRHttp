@@ -250,8 +250,8 @@ module GRHttp
 					if io[:length].to_i == 0
 						chunk = data.gets
 						return false unless chunk
-						io[:length] = chunk.match.to_i(16)
-						io.close && raise("Unknown error parsing chunked data".freeze) unless io[:length]
+						io[:length] = chunk.to_i(16)
+						io.close && raise("Unknown error parsing chunked data".freeze) if io[:length]==0 && chunk.strip != '0'
 						request[:body_complete] = true && break if io[:length] == 0
 						io[:act_length] = 0
 						request[:body] ||= ''
