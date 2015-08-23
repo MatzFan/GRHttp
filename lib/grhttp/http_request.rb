@@ -1,16 +1,17 @@
 module GRHttp
 
 	# This class is the part of the GRHttp server.
-	# The request object is a Hash and the HTTPRequest provides
-	# simple shortcuts and access to the request' Hash data.
+	# The request object is a Hash and the Request provides
+	# simple shortcuts and access to the request's Hash data.
 	#
 	#
-	class HTTPRequest < Hash
+	# An HTTP Request
+	class Request < Hash
 
 		def initialize io = nil
 			super()
 			self[:io] = io if io
-			self[:cookies] = Cookies.new
+			self[:cookies] = Base::Cookies.new
 			self[:params] = {}
 		end
 
@@ -55,24 +56,29 @@ module GRHttp
 			self[:path] = new_path
 		end
 
+		# The HTTP version for this request
+		def version
+			self[:version]
+		end
+
 		# the base url ([http/https]://host[:port])
-		def base_url switch_protocol = nil
+		def base_url switch_scheme = nil
 			"#{switch_protocol || self[:requested_protocol]}://#{self[:host_name]}#{self[:port]? ":#{self[:port]}" : ''}"
 		end
 
 		# the request's url, without any GET parameters ([http/https]://host[:port]/path)
-		def request_url switch_protocol = nil
+		def request_url switch_scheme = nil
 			"#{base_url switch_protocol}#{self[:original_path]}"
 		end
 
 		# the protocol managing this request
-		def protocol
-			self[:requested_protocol]
+		def scheme
+			self[:scheme]
 		end
 
 		# @return [true, false] returns true if the requested was an SSL protocol (true also if the connection is clear-text behind an SSL Proxy, such as with some PaaS providers).
 		def ssl?
-			io.ssl? || self[:requested_protocol] == 'https'.freeze || self[:requested_protocol] == 'wss'.freeze
+			io.ssl? || self[:scheme] == 'https'.freeze || self[:scheme] == 'wss'.freeze
 		end
 		alias :secure? :ssl?
 
@@ -141,9 +147,8 @@ module GRHttp
 		end
 		HTTP_UPGRADE = 'upgrade'.freeze ; HTTP_UPGRADE_REGEX = /upg/i ; HTTP_WEBSOCKET = 'websocket'.freeze; HTTP_CONNECTION = 'connection'.freeze
 		# returns true if this is a websocket upgrade request
-		def upgrade?
+		def websocket?
 			@is_upgrade ||= (self[HTTP_UPGRADE] && self[HTTP_UPGRADE].to_s.downcase == HTTP_WEBSOCKET &&  self[HTTP_CONNECTION].to_s =~ HTTP_UPGRADE_REGEX && true)
 		end
-
 	end
 end

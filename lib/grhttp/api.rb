@@ -21,7 +21,7 @@ module GRHttp
 	def listen params = {}, &block
 		params[:http_handler] ||= params[:handler] ||= block
 		params[:upgrade_handler] ||= params[:handler]
-		params[:handler] = Base::HTTPHandler
+		params[:handler] = Base::HTTP
 		params[:timeout] ||= 5
 		GReactor.listen params
 	end
