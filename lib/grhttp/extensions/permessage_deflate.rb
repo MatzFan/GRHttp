@@ -82,6 +82,7 @@ module GRHttp
 				0
 			end
 			def self.call args
+				return false unless args.include? 'client_max_window_bits'.freeze
 				args.each {|a| return false unless ALLOWED_ARGS[a.downcase.split('=')[0].strip] }
 				WSDeflateExt.new args
 			end
