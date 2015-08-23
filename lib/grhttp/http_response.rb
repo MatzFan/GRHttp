@@ -145,9 +145,8 @@ module GRHttp
 		#
 		# If the headers were already sent, this will also send the data and hang until the data was sent.
 		def << str
-			@body ? @body.push(str) : (request.head? ? false :  send_body(str))
+			@body ? @body.push(str) : ( (@body = str) && @io.params[:handler].stream_response(self) )
 			self
-			# write if streaming?
 		end
 
 		# returns a response header, if set.
@@ -299,7 +298,6 @@ module GRHttp
 		# or the connection will not close properly and the client will be left expecting more information.
 		def start_streaming
 			raise "Cannot start streaming after headers were sent!" if headers_sent?
-			headers['connection'.freeze] = 'close'.freeze
 			@io[:http_sblocks_count] ||= 0
 			@io.params[:handler].stream_response self
 		end

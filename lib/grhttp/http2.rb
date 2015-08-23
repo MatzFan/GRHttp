@@ -1,35 +1,8 @@
-#!/usr/bin/env ruby
-require 'pathname'
-Root ||= Pathname.new(File.dirname(__FILE__)).expand_path
-Dir.chdir Root.join('..').to_s
-
-puts Root.join('..').to_s
-
-require "bundler/setup"
-require "greactor"
-require 'stringio'
-
-require './bin/hpack.rb'
-require './bin/base.rb'
-require './bin/http1.rb'
-
-
-####################################
-## This is a work in progress HTTP/2 protocol setup for testing
-## and possible future incorporation into an HTTP server.
-
-
-# ab -n 10000 -c 200 -k http://127.0.0.1:3000/ctrl
-# ~/ruby/wrk/wrk -c400 -d5 -t12 http://localhost:3000/ctrl
-module HTTP
+module GRHttp
 
 	class HTTP2 < ::GReactor::Protocol
 		class Stream
 			attr_accessor :window_size
-		end
-		class Request
-		end
-		class Response
 		end
 		def initialize io, original_request = nil
 			# do stuff, i.e. related to the header:
@@ -112,21 +85,6 @@ module HTTP
 			nil
 		end
 
-		# Sends an HTTP frame with the requested payload
-		#
-		# @return [true, false] returns true if the frame was sent and false if the frame couldn't be sent (i.e. payload too big, connection closed etc').
-		def emit_frame payload, sid = 0, type = 0, flags = 0
-			frame = [payload.bytesize, type, flags, sid, payload].pack('N C C N a*'.freeze)
-			frame.slice! 0
-			@io.write(frame)
-		end
-
-		# Sends an HTTP frame group with the requested payload. This means the group will not be interrupted and will be sent as one unit.
-		#
-		# @return [true, false] returns true if the frame was sent and false if the frame couldn't be sent (i.e. payload too big, connection closed etc').
-		def emit_data payload, type = 0, flags = 0
-		end
-
 		# Error codes:
 
 		# The associated condition is not a result of an error. For example, a GOAWAY might include this code to indicate graceful shutdown of a connection.
@@ -160,6 +118,21 @@ module HTTP
 
 
 		protected
+
+		# Sends an HTTP frame with the requested payload
+		#
+		# @return [true, false] returns true if the frame was sent and false if the frame couldn't be sent (i.e. payload too big, connection closed etc').
+		def emit_frame payload, sid = 0, type = 0, flags = 0
+			frame = [payload.bytesize, type, flags, sid, payload].pack('N C C N a*'.freeze)
+			frame.slice! 0
+			@io.write(frame)
+		end
+
+		# Sends an HTTP frame group with the requested payload. This means the group will not be interrupted and will be sent as one unit.
+		#
+		# @return [true, false] returns true if the frame was sent and false if the frame couldn't be sent (i.e. payload too big, connection closed etc').
+		def emit_data payload, type = 0, flags = 0
+		end
 
 		def parse_preface data
 			return true if @connected
@@ -300,10 +273,10 @@ end
 
 # GR::Settings.set_forking 4
 
-GR.on_shutdown { puts "\r\nGoodbye.\r\n" }
+# GR.on_shutdown { puts "\r\nGoodbye.\r\n" }
 
-# GR.create_logger nil
-GR.start(1) { GR.listen timeout: 5, handler: HTTP::HTTP, port: 3000, ssl_protocols: ['h2', 'http/1', 'http/1.1', 'http'] }
+# # GR.create_logger nil
+# GR.start(1) { GR.listen timeout: 5, handler: HTTP::HTTP, port: 3000, ssl_protocols: ['h2', 'http/1', 'http/1.1', 'http'] }
 
 
 

@@ -25,8 +25,8 @@ require "grhttp/ws_handler"
 require "grhttp/ws_event"
 require "grhttp/ws_client"
 
-require "grhttp/request"
-require "grhttp/response"
+require "grhttp/http_request"
+require "grhttp/http_response"
 
 require "grhttp/api"
 

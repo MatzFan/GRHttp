@@ -60,7 +60,7 @@ module GRHttp
 					request['cookie'] = tmp
 					extract_header tmp, request.cookies
 				else
-					extract_header request['cookie'].split(/[;,][\s]?/.freeze, request.cookies
+					extract_header request['cookie'].split(/[;,][\s]?/.freeze), request.cookies
 				end
 			elsif request['set-cookie']
 				request['set-cookie'] = [ request['set-cookie'] ] unless request['set-cookie'].is_a?(Array)
