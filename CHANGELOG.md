@@ -14,6 +14,8 @@ Change log v.0.1.0
 
 **Fix**: Fixed an issue with the websocket connect shortcut method (`GRHttp.ws_connect` vs. `GRHttp::WSClient.connect`), which caused options passed to the shortcut to be ignored. This is now fixed.
 
+**Deprecation notice**: `request[:scheme]` or `request.scheme` should be used instead of `request[:requested_protocol]` or `request.protocol`.
+
 ***
 
 Change log v.0.0.23

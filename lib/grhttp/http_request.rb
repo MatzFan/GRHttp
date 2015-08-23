@@ -67,7 +67,11 @@ module GRHttp
 
 		# the protocol managing this request
 		def protocol
-			self[:requested_protocol]
+			self[:scheme]
+		end
+		# the protocol's scheme (http/https/ws/wss) managing this request
+		def scheme
+			self[:scheme]
 		end
 
 		# @return [true, false] returns true if the requested was an SSL protocol (true also if the connection is clear-text behind an SSL Proxy, such as with some PaaS providers).
