@@ -172,6 +172,7 @@ module GRHttp
 					response.set_cookie "magic_flash_#{k.to_s}", v
 				end
 				response.raw_cookies.freeze
+				# response.cookies.set_response nil
 				response.flash.freeze
 				response['date'] ||= Time.now.httpdate
 

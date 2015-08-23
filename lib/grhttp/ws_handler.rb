@@ -61,7 +61,8 @@ module GRHttp
 				response['sec-websocket-extensions'.freeze] = ext.join(', ') if ext.any?
 				response['Sec-WebSocket-Accept'.freeze] = Digest::SHA1.base64digest(request['sec-websocket-key'.freeze] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'.freeze)
 				# GReactor.log_raw "#{@request[:client_ip]} [#{Time.now.utc}] - #{@connection.object_id} Upgraded HTTP to WebSockets.\n"
-				request.cookies.set_response nil
+				# request.io.params[:handler].send_response response 
+				request.io.params[:handler].send_response response 
 				io[:ws_parser] = parser_hash
 				io[:ws_extentions].freeze
 				io[:websocket_handler] = handler
@@ -102,46 +103,6 @@ module GRHttp
 				io.write header
 				io.write(data) && true
 			end
-			# # Formats the data as one or more WebSocket frames.
-			# def frame_data io, data, op_code = nil, fin = true
-			# 	# set up variables
-			# 	frame = ''.force_encoding('binary')
-			# 	op_code ||= (data.encoding.name == 'UTF-8' ? 1 : 2)
-
-
-			# 	if data[FRAME_SIZE_LIMIT] && fin
-			# 		# fragment big data chuncks into smaller frames - op-code reset for 0 for all future frames.
-			# 		data = data.dup
-			# 		data.force_encoding(::Encoding::ASCII_8BIT)
-			# 		[frame << frame_data(io, data.slice!(0...FRAME_SIZE_LIMIT), op_code, false), op_code = 0] while data.byte_size > FRAME_SIZE_LIMIT # 1048576
-			# 		# frame << frame_data(io, data.slice!(0..1048576), op_code, false)
-			# 		# data = 
-			# 		# op_code = 0
-			# 	end
-
-			# 	# apply extenetions to the frame
-			# 	ext = 0
-			# 	# # ext |= call each io.protocol.extenetions with data #changes data and returns flags to be set
-			# 	# io[:ws_extentions].each { |ex| ext |= WSProtocol::SUPPORTED_EXTENTIONS[ex[0]][2].call data, ex[1..-1]}
-
-			# 	# set 
-			# 	frame << ( (fin ? 0b10000000 : 0) | (op_code & 0b00001111) | ext).chr
-
-			# 	byte_size = data.bytesize
-			# 	if byte_size < 125
-			# 		frame << byte_size.chr
-			# 	elsif byte_size.bit_length <= 16
-			# 		frame << 126.chr
-			# 		frame << [byte_size].pack('S>')
-			# 	else
-			# 		frame << 127.chr
-			# 		frame << [byte_size].pack('Q>')
-			# 	end
-			# 	frame.force_encoding(data.encoding)
-			# 	frame << data
-			# 	frame.force_encoding(::Encoding::ASCII_8BIT)
-			# 	frame
-			# end
 
 			def close_frame
 				CLOSE_FRAME
@@ -262,60 +223,6 @@ module GRHttp
 				end
 				true
 			end
-			# # parse the message and send it to the handler
-			# #
-			# # test: frame = ["819249fcd3810b93b2fb69afb6e62c8af3e83adc94ee2ddd"].pack("H*").bytes; parser[:stage] = 0; parser = {}
-			# # accepts:
-			# # frame:: an array of bytes
-			# def self.extract_message io, data
-			# 	parser = io[:ws_parser] ||= {}
-			# 	until data.empty?
-			# 			if parser[:stage] == 0 && !data.empty?
-			# 			parser[:fin] = data[0][7] == 1
-			# 			parser[:rsv1] = data[0][6] == 1
-			# 			parser[:rsv2] = data[0][5] == 1
-			# 			parser[:rsv3] = data[0][4] == 1
-			# 			parser[:op_code] = data[0] & 0b00001111
-			# 			parser[:p_op_code] ||= data[0] & 0b00001111
-			# 			parser[:stage] += 1
-			# 			data.shift
-			# 		end
-			# 		if parser[:stage] == 1
-			# 			parser[:mask] = data[0][7]
-			# 			parser[:len] = data[0] & 0b01111111
-			# 			data.shift
-			# 			if parser[:len] == 126
-			# 				parser[:len] = merge_bytes( *(data.slice!(0,2)) ) # should be = ?
-			# 			elsif parser[:len] == 127
-			# 				# len = 0
-			# 				parser[:len] = merge_bytes( *(data.slice!(0,8)) ) # should be = ?
-			# 			end
-			# 			parser[:step] = 0
-			# 			parser[:stage] += 1
-			# 			review_message_size io, parser
-			# 		end
-			# 		if parser[:stage] == 2 && parser[:mask] == 1
-			# 			parser[:mask_key] = data.slice!(0,4)
-			# 			parser[:stage] += 1
-			# 		elsif  parser[:mask] != 1
-			# 			parser[:stage] += 1
-			# 		end
-			# 		if parser[:stage] == 3 && parser[:step] < parser[:len]
-			# 			# data.length.times {|i| data[0] = data[0] ^ parser[:mask_key][parser[:step] % 4] if parser[:mask_key]; parser[:step] += 1; parser[:body] << data.shift; break if parser[:step] == parser[:len]}
-			# 			slice_length = [data.length, (parser[:len]-parser[:step])].min
-			# 			if parser[:mask_key]
-			# 				masked = data.slice!(0, slice_length)
-			# 				masked.map!.with_index {|b, i|  b ^ parser[:mask_key][ ( i + parser[:step] ) % 4]  }
-			# 				parser[:body].concat masked
-			# 			else
-			# 				parser[:body].concat data.slice!(0, slice_length)
-			# 			end
-			# 			parser[:step] += slice_length
-			# 		end
-			# 		complete_frame io unless parser[:step] < parser[:len]
-			# 	end
-			# 	true
-			# end
 
 			# takes and Array of bytes and combines them to an int(16 Bit), 32Bit or 64Bit number
 			def self.merge_bytes bytes
