@@ -138,11 +138,11 @@ module GRHttp
 			def stream_response response, finish = false
 				unless response.headers.frozen?
 					response['transfer-encoding'] = 'chunked'
-					headers['connection'.freeze] = 'close'.freeze
+					response.headers['connection'.freeze] = 'close'.freeze
 					send_headers response
 					@refuse_requests = true
 				end
-				return if request.head?
+				return if response.request.head?
 				body = extract_body response.body
 				response.body = nil
 				stream_data body if body || finish
