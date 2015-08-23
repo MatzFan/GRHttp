@@ -108,7 +108,7 @@ module GRHttp
 			# 'gr.params'			=> :params,
 			# 'gr.cookies'		=> :cookies,
 			'REQUEST_METHOD'	=> :method,
-			'rack.url_scheme'	=> :requested_protocol,
+			'rack.url_scheme'	=> :scheme,
 			'rack.input'		=> :rack_input
 		}
 

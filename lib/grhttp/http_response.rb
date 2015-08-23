@@ -335,7 +335,7 @@ module GRHttp
 		def finished_log
 			return if @quite
 			t_n = Time.now
-			GReactor.log_raw("#{@request[:client_ip]} [#{t_n.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:requested_protocol]}\/#{@request[:version]}\" #{@status} #{bytes_sent.to_s} #{((t_n - @request[:time_recieved])*1000).round(2)}ms\n").clear # %0.3f
+			GReactor.log_raw("#{@request[:client_ip]} [#{t_n.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:scheme]}\/#{@request[:version]}\" #{@status} #{bytes_sent.to_s} #{((t_n - @request[:time_recieved])*1000).round(2)}ms\n").clear # %0.3f
 		end
 
 		# Danger Zone (internally used method, use with care): fix response's headers before sending them (date, connection and transfer-coding).

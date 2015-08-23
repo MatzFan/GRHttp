@@ -57,7 +57,7 @@ module GRHttp
 
 		# the base url ([http/https]://host[:port])
 		def base_url switch_protocol = nil
-			"#{switch_protocol || self[:requested_protocol]}://#{self[:host_name]}#{self[:port]? ":#{self[:port]}" : ''}"
+			"#{switch_protocol || self[:scheme]}://#{self[:host_name]}#{self[:port]? ":#{self[:port]}" : ''}"
 		end
 
 		# the request's url, without any GET parameters ([http/https]://host[:port]/path)
@@ -76,7 +76,7 @@ module GRHttp
 
 		# @return [true, false] returns true if the requested was an SSL protocol (true also if the connection is clear-text behind an SSL Proxy, such as with some PaaS providers).
 		def ssl?
-			io.ssl? || self[:requested_protocol] == 'https'.freeze || self[:requested_protocol] == 'wss'.freeze
+			io.ssl? || self[:scheme] == 'https'.freeze || self[:scheme] == 'wss'.freeze
 		end
 		alias :secure? :ssl?
 
