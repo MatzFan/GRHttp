@@ -136,17 +136,25 @@ module GRHttp
 		def self.extract_params data, target_hash
 			data.each do |set|
 				list = set.split('='.freeze, 2)
-				list.each {|s|  next unless s; s.gsub!('+'.freeze, '%20'.freeze); s.gsub!(/\%[0-9a-f]{2}/i) {|m| m[1..2].to_i(16).chr}; s.gsub!(/&#[0-9]{4};/i) {|m| [m[2..5].to_i].pack 'U'.freeze }}
+				list.each {|s| uri_decode! s if s}
 				add_param_to_hash list.shift, list.shift, target_hash
 			end
 		end
-		# extracts parameters from the query
+		# decode form / uri data (including the '+' sign as a space (%20) replacement).
+		def self.uri_decode! s
+			s.gsub!('+'.freeze, '%20'.freeze); s.gsub!(/\%[0-9a-f]{2}/i) {|m| m[1..2].to_i(16).chr}; s.gsub!(/&#[0-9]{4};/i) {|m| [m[2..5].to_i].pack 'U'.freeze }
+		end
+		# extracts parameters from header data 
 		def self.extract_header data, target_hash
 			data.each do |set|
 				list = set.split('='.freeze, 2)
-				list.each {|s| next unless s; s.gsub!(/\%[0-9a-f]{2}/i) {|m| m[1..2].to_i(16).chr}; s.gsub!(/&#[0-9]{4};/i) {|m| [m[2..5].to_i].pack 'U'.freeze }}
+				list.each {|s| form_decode! s if s}
 				add_param_to_hash list.shift, list.shift, target_hash
 			end
+		end
+		# decode percent-encoded data (excluding the '+' sign for encoding).
+		def self.form_decode! s
+			s.gsub!(/\%[0-9a-f]{2}/i) {|m| m[1..2].to_i(16).chr}; s.gsub!(/&#[0-9]{4};/i) {|m| [m[2..5].to_i].pack 'U'.freeze }
 		end
 		# Changes String to a Ruby Object, if it's a special string...
 		def self.rubyfy!(string)
@@ -181,6 +189,67 @@ module GRHttp
 			end
 		end
 
+		# parse a mime/multipart body or part.
+		def self.read_multipart request, headers, part, name_prefix = ''
+			if headers['content-type'].to_s =~ /multipart/i
+				tmp = {}
+				extract_header headers['content-type'].split(/[;,][\s]?/), tmp
+				boundry = tmp[:boundary][1..-2]
+				if tmp[:name]
+					if name_prefix.empty?
+						name_prefix << tmp[:name]
+					else
+						name_prefix << "[#{tmp[:name]}]"
+					end
+				end
+				part.split(/([\r]?\n)?--#{boundry}(--)?[\r]?\n/).each do |p|
+					unless p.strip.empty? || p=='--'.freeze
+						# read headers
+						h = {}
+						m = p.slice! /\A[^\r\n]*[\r]?\n/
+						while m
+							break if m =~ /\A[\r]?\n/
+							m = m.match(/^([^:]+):[\s]?([^\r\n]+)/)
+							h[m[1].downcase] = m[2] if m
+							m = p.slice! /\A[^\r\n]*[\r]?\n/
+						end
+						# send headers and body to be read
+						read_multipart request, h, p, name_prefix
+					end
+				end
+				return
+			end
+
+			# require a part body to exist (data exists) for parsing
+			return true if part.to_s.empty?
+
+			# convert part to `charset` if charset is defined?
+
+			if !headers['content-disposition'.freeze]
+				GReactor.error "Wrong multipart format with headers: #{headers} and body: #{part}"
+				return
+			end
+
+			cd = {}
+
+			extract_header headers['content-disposition'.freeze].split(/[;,][\s]?/), cd
+
+			name = name_prefix.dup
+
+			if name_prefix.empty?
+				name = cd[:name][1..-2]
+			else
+				name << "[cd[:name][1..-2]}]"
+			end
+			if headers['content-type'.freeze]
+				add_param_to_hash "#{name}[data]", part, request[:params]
+				add_param_to_hash "#{name}[type]", make_utf8!(headers['content-type'.freeze]), request[:params]
+				cd.each {|k,v|  add_param_to_hash "#{name}[#{k.to_s}]", make_utf8!(v[1..-2].to_s), request[:params] unless k == :name || !v}
+			else
+				add_param_to_hash name, uri_decode!(part), request[:params]
+			end
+			true
+		end
 
 	end
 end

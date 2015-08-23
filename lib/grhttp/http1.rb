@@ -18,18 +18,19 @@ module GRHttp
 					request = (@request ||= ::GRHttp::Request.new(@io))
 					unless request[:method]
 						request[:method], request[:query], request[:version] = l.strip.split(/[\s]+/, 3)
-						return (GReactor.info('Protocol Error, closing connection.') && close) unless request[:method] =~ HTTP_METHODS_REGEXP
+						return (GReactor.warn('Protocol Error, closing connection.') && close) unless request[:method] =~ HTTP_METHODS_REGEXP
 						request[:time_recieved] = Time.now
 					end
 					until request[:headers_complete] || (l = data.gets).nil?
 						if l.include? ':'
-							l = l.strip.split(':', 2)
-							l[0].strip! ; l[0].downcase!
+							l = l.strip.split(/:[\s]?/, 2)
+							l[0].strip! ; l[0].downcase!;
 							request[l[0]] ? (request[l[0]].is_a?(Array) ? (request[l[0]] << l[1]) : request[l[0]] = [request[l[0]], l[1] ]) : (request[l[0]] = l[1])
 						elsif l =~ /^[\r]?\n/
 							request[:headers_complete] = true
 						else
 							#protocol error
+							GReactor.warn 'Protocol Error, closing connection.'
 							return close
 						end
 					end
@@ -40,7 +41,7 @@ module GRHttp
 								chunk = data.gets
 								return false unless chunk
 								io[:length] = chunk.to_i(16)
-								(GReactor.info('Protocol Error, closing connection.') && close) unless io[:length]
+								return (GReactor.warn('Protocol Error, closing connection.') && close) unless io[:length]
 								request[:body_complete] = true && break if io[:length] == 0
 								io[:act_length] = 0
 								request[:body] ||= ''
@@ -119,7 +120,7 @@ module GRHttp
 				headers['content-length'.freeze] ||= body.bytesize
 
 				keep_alive = false
-				if (request[:version].to_f > 1 && request['connection'.freeze].nil?) || request['connection'.freeze].to_s =~ /^k/i || (headers['connection'.freeze] && headers['connection'.freeze] =~ /^k/i)
+				if (request[:version].to_f > 1 && request['connection'.freeze].nil?) || request['connection'.freeze].to_s =~ /keep/i || (headers['connection'.freeze] && headers['connection'.freeze] =~ /^k/i)
 					keep_alive = true
 					headers['connection'.freeze] ||= 'Keep-Alive'.freeze
 					headers['keep-alive'.freeze] ||= "timeout=#{(@io.timeout ||= 3).to_s}"
