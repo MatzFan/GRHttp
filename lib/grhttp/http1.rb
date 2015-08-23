@@ -127,7 +127,7 @@ module GRHttp
 					headers['keep-alive'.freeze] ||= "timeout=#{(@io.timeout ||= 3).to_s}"
 				else
 					headers['connection'.freeze] ||= 'close'.freeze
-				end unless keep_alive
+				end
 
 				send_headers response
 				return if request.head?
@@ -174,13 +174,15 @@ module GRHttp
 				response.raw_cookies.freeze
 				# response.cookies.set_response nil
 				response.flash.freeze
-				response['date'] ||= Time.now.httpdate
 
 				request = response.request
 				headers = response.headers
 
+				# response['date'.freeze] ||= request[:time_recieved].httpdate
 
 				out = "HTTP/#{request[:version]} #{response.status} #{::GRHttp::Response::STATUS_CODES[response.status] || 'unknown'}\r\n"
+
+				out << request[:time_recieved].utc.strftime("Date: %a, %d %b %Y %H:%M:%S GMT\r\n".freeze) unless headers['date'.freeze]
 
 				# unless @headers['connection'] || (@request[:version].to_f <= 1 && (@request['connection'].nil? || !@request['connection'].match(/^k/i))) || (@request['connection'] && @request['connection'].match(/^c/i))
 				headers.each {|k,v| out << "#{k.to_s}: #{v}\r\n"}
@@ -221,7 +223,7 @@ module GRHttp
 			def log_finished response
 				t_n = Time.now
 				request = response.request
-				GReactor.log_raw("#{request[:client_ip]} [#{t_n.utc}] \"#{request[:method]} #{request[:original_path]} #{request[:scheme]}\/#{request[:version]}\" #{response.status} #{@io[:bytes_sent].to_s} #{((t_n - request[:time_recieved])*1000).round(2)}ms\n").clear # %0.3f
+				GReactor.log_raw("#{request[:client_ip]} [#{t_n.utc}] \"#{request[:method]} #{request[:original_path]} #{request[:scheme]}\/#{request[:version]}\" #{response.status} #{@io[:bytes_sent].to_s} #{((t_n - request[:time_recieved])*1000).round(2)}ms\n").clear if GReactor.logger
 				@io[:bytes_sent] = 0
 			end
 		end

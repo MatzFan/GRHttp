@@ -151,7 +151,8 @@ module GRHttp
 
 		# returns a response header, if set.
 		def [] header
-			headers[header] # || @cookies[header]
+			header.is_a?(String) ? (header.frozen? ? header : header.downcase!) : (header.is_a?(Symbol) ? (header = header.to_s.downcase) : (return false))
+			headers[header]
 		end
 
 		# sets a response header. response headers should be a downcase String (not a symbol or any other object).
