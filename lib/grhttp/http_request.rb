@@ -150,5 +150,6 @@ module GRHttp
 		def websocket?
 			@is_upgrade ||= (self[HTTP_UPGRADE] && self[HTTP_UPGRADE].to_s.downcase == HTTP_WEBSOCKET &&  self[HTTP_CONNECTION].to_s =~ HTTP_UPGRADE_REGEX && true)
 		end
+		alias :upgrade? :websocket?
 	end
 end

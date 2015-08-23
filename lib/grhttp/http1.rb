@@ -13,11 +13,10 @@ module GRHttp
 			def on_message data
 				return if @refuse_requests
 				data = ::StringIO.new data
-				l = nil
-				while (l = data.gets)
+				until data.eof?
 					request = (@request ||= ::GRHttp::Request.new(@io))
 					unless request[:method]
-						request[:method], request[:query], request[:version] = l.strip.split(/[\s]+/, 3)
+						request[:method], request[:query], request[:version] = data.gets.strip.split(/[\s]+/, 3)
 						return (GReactor.warn('Protocol Error, closing connection.') && close) unless request[:method] =~ HTTP_METHODS_REGEXP
 						request[:time_recieved] = Time.now
 					end

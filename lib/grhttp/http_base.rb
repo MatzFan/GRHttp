@@ -33,9 +33,9 @@ module GRHttp
 				# request[:original_path] = HTTP.decode(m[7], :uri) || '/'
 				# request['host'] ||= "#{request[:host_name]}:#{request[:port]}"
 
-				# parse query for params - m[9] is the data part of the query
+				# # parse query for params - m[9] is the data part of the query
 				# if m[9]
-				# 	HTTP.extract_params m[9].split(PARAM_SPLIT_REGX), request[:params]
+				# 	extract_params m[9].split(/[&;]/), request[:params]
 				# end
 			# end
 			return request if request[:scheme]
@@ -51,7 +51,7 @@ module GRHttp
 			request[:path] = tmp[0].chomp('/')
 			request[:original_path] = tmp[0].freeze
 			request[:quary_params] = tmp[1]
-			extract_params tmp[1].split(PARAM_SPLIT_REGX), (request[:params] ||= {}) if tmp[1]
+			extract_params tmp[1].split(/[&;]/.freeze), (request[:params] ||= {}) if tmp[1]
 
 			if request['cookie']
 				if request['cookie'].is_a?(Array)
@@ -89,9 +89,9 @@ module GRHttp
 			string
 		end
 
+		# encodes URL data.
 		def self.encode_url str
-			str.to_s.dup.force_encoding(::Encoding::ASCII_8BIT).gsub(/[^a-z0-9\*\.\_\-]/i) {|m| '%%%02x'.freeze % m.ord }
-			# str.to_s.b.gsub(/[^a-z0-9\*\.\_\-]/i) {|m| '%%%02x' % m.ord }
+			(str.to_s.gsub(/[^a-z0-9\*\.\_\-]/i) {|m| '%%%02x'.freeze % m.ord }).force_encoding(::Encoding::ASCII_8BIT)
 		end
 
 		# Adds paramaters to a Hash object, according to the GRHttp's server conventions.
@@ -136,25 +136,25 @@ module GRHttp
 		def self.extract_params data, target_hash
 			data.each do |set|
 				list = set.split('='.freeze, 2)
-				list.each {|s| uri_decode! s if s}
+				list.each {|s| uri_decode!(s) if s}
 				add_param_to_hash list.shift, list.shift, target_hash
 			end
 		end
 		# decode form / uri data (including the '+' sign as a space (%20) replacement).
 		def self.uri_decode! s
-			s.gsub!('+'.freeze, '%20'.freeze); s.gsub!(/\%[0-9a-f]{2}/i) {|m| m[1..2].to_i(16).chr}; s.gsub!(/&#[0-9]{4};/i) {|m| [m[2..5].to_i].pack 'U'.freeze }
+			s.gsub!('+'.freeze, '%20'.freeze); s.gsub!(/\%[0-9a-f]{2}/i) {|m| m[1..2].to_i(16).chr}; s.gsub!(/&#[0-9]{4};/i) {|m| [m[2..5].to_i].pack 'U'.freeze }; s
 		end
 		# extracts parameters from header data 
 		def self.extract_header data, target_hash
 			data.each do |set|
 				list = set.split('='.freeze, 2)
-				list.each {|s| form_decode! s if s}
+				list.each {|s| form_decode!(s) if s}
 				add_param_to_hash list.shift, list.shift, target_hash
 			end
 		end
 		# decode percent-encoded data (excluding the '+' sign for encoding).
 		def self.form_decode! s
-			s.gsub!(/\%[0-9a-f]{2}/i) {|m| m[1..2].to_i(16).chr}; s.gsub!(/&#[0-9]{4};/i) {|m| [m[2..5].to_i].pack 'U'.freeze }
+			s.gsub!(/\%[0-9a-f]{2}/i) {|m| m[1..2].to_i(16).chr}; s.gsub!(/&#[0-9]{4};/i) {|m| [m[2..5].to_i].pack 'U'.freeze }; s
 		end
 		# Changes String to a Ruby Object, if it's a special string...
 		def self.rubyfy!(string)
@@ -194,7 +194,7 @@ module GRHttp
 			if headers['content-type'].to_s =~ /multipart/i
 				tmp = {}
 				extract_header headers['content-type'].split(/[;,][\s]?/), tmp
-				boundry = tmp[:boundary][1..-2]
+				boundry = tmp[:boundary]
 				if tmp[:name]
 					if name_prefix.empty?
 						name_prefix << tmp[:name]
@@ -234,12 +234,10 @@ module GRHttp
 
 			extract_header headers['content-disposition'.freeze].split(/[;,][\s]?/), cd
 
-			name = name_prefix.dup
-
 			if name_prefix.empty?
 				name = cd[:name][1..-2]
 			else
-				name << "[cd[:name][1..-2]}]"
+				name = "#{name_prefix}[cd[:name][1..-2]}]"
 			end
 			if headers['content-type'.freeze]
 				add_param_to_hash "#{name}[data]", part, request[:params]
