@@ -63,7 +63,7 @@ module GRHttp
 
 		# the base url ([http/https]://host[:port])
 		def base_url switch_scheme = nil
-			"#{switch_protocol || self[:requested_protocol]}://#{self[:host_name]}#{self[:port]? ":#{self[:port]}" : ''}"
+			"#{switch_protocol || self[:scheme]}://#{self[:host_name]}#{self[:port]? ":#{self[:port]}" : ''}"
 		end
 
 		# the request's url, without any GET parameters ([http/https]://host[:port]/path)
@@ -145,10 +145,9 @@ module GRHttp
 		def xml?
 			self[HTTP_CTYPE].match HTTP_XML
 		end
-		HTTP_UPGRADE = 'upgrade'.freeze ; HTTP_UPGRADE_REGEX = /upg/i ; HTTP_WEBSOCKET = 'websocket'.freeze; HTTP_CONNECTION = 'connection'.freeze
 		# returns true if this is a websocket upgrade request
 		def websocket?
-			@is_upgrade ||= (self[HTTP_UPGRADE] && self[HTTP_UPGRADE].to_s.downcase == HTTP_WEBSOCKET &&  self[HTTP_CONNECTION].to_s =~ HTTP_UPGRADE_REGEX && true)
+			@is_websocket ||= (self['upgrade'.freeze] && self['upgrade'.freeze].to_s =~ /websocket/i.freeze &&  self['connection'.freeze].to_s =~ /upg/i.freeze && true)
 		end
 		alias :upgrade? :websocket?
 	end

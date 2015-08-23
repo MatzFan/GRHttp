@@ -145,7 +145,7 @@ module GRHttp
 		#
 		# If the headers were already sent, this will also send the data and hang until the data was sent.
 		def << str
-			@body ? @body.push(str) : ( (@body = str) && @io.params[:handler].stream_response(self) )
+			( @body ? @body.push(str) : ( (@body = str) && @io.params[:handler].stream_response(self) ) ) if str
 			self
 		end
 
@@ -197,7 +197,7 @@ module GRHttp
 			value ||= 'deleted'.freeze
 			params[:expires] ||= (Time.now + 315360000) unless params[:max_age]
 			params[:path] ||= '/'.freeze
-			value = HTTP.encode_url(value)
+			value = GRHttp::Base.encode_url(value)
 			if params[:max_age]
 				value << ('; Max-Age=%s' % params[:max_age])
 			else

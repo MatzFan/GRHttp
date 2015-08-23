@@ -16,7 +16,9 @@ module GRHttp
 				until data.eof?
 					request = (@request ||= ::GRHttp::Request.new(@io))
 					unless request[:method]
-						request[:method], request[:query], request[:version] = data.gets.strip.split(/[\s]+/, 3)
+						l = data.gets.strip
+						next if l.empty?
+						request[:method], request[:query], request[:version] = l.split(/[\s]+/, 3)
 						return (GReactor.warn('Protocol Error, closing connection.') && close) unless request[:method] =~ HTTP_METHODS_REGEXP
 						request[:time_recieved] = Time.now
 					end
@@ -92,7 +94,8 @@ module GRHttp
 				response = ::GRHttp::Response.new request
 				begin
 					if request.websocket?
-						WSHandler.http_handshake request, response, (@params[:upgrade_handler] || NO_HANDLER).call(request, response) if WSHandler.is_valid_request?(request, response)
+						@refuse_requests = true
+						WSHandler.http_handshake request, response, (@params[:upgrade_handler] || NO_HANDLER).call(request, response)
 					else
 						ret = (@params[:http_handler] || NO_HANDLER).call(request, response)
 						if ret.is_a?(String)
@@ -100,8 +103,8 @@ module GRHttp
 						elsif ret == false
 							response.clear && (response.status = 404) && (response <<  ::GRHttp::Response::STATUS_CODES[404])
 						end
-						send_response response
 					end							
+					send_response response
 				rescue => e
 					GReactor.error e
 					send_response ::GRHttp::Response.new(request, 500, {},  ::GRHttp::Response::STATUS_CODES[500])
@@ -113,20 +116,18 @@ module GRHttp
 
 				request = response.request
 				headers = response.headers
-				body = extract_body response
-				response.body = nil
+				body = extract_body response.body
 
-				headers['content-length'.freeze] ||= body.bytesize
+				headers['content-length'.freeze] ||= body.to_s.bytesize
 
-				keep_alive = false
-				if (request[:version].to_f > 1 && request['connection'.freeze].nil?) || request['connection'.freeze].to_s =~ /keep/i || (headers['connection'.freeze] && headers['connection'.freeze] =~ /^k/i)
+				keep_alive = io[:keep_alive]
+				if (request[:version].to_f > 1 && request['connection'.freeze].nil?) || request['connection'.freeze].to_s =~ /ke/i || (headers['connection'.freeze] && headers['connection'.freeze] =~ /^ke/i)
 					keep_alive = true
 					headers['connection'.freeze] ||= 'Keep-Alive'.freeze
 					headers['keep-alive'.freeze] ||= "timeout=#{(@io.timeout ||= 3).to_s}"
 				else
 					headers['connection'.freeze] ||= 'close'.freeze
-				end
-
+				end unless keep_alive
 
 				send_headers response
 				return if request.head?
@@ -142,7 +143,7 @@ module GRHttp
 					@refuse_requests = true
 				end
 				return if request.head?
-				body = extract_body response
+				body = extract_body response.body
 				response.body = nil
 				stream_data body if body || finish
 				if finish
@@ -196,21 +197,21 @@ module GRHttp
 				@io[:bytes_sent] += @io.write(data).to_i
 			end
 			def stream_data data = nil
-				@io[:bytes_sent] += @io.write("#{data.bytesize.to_s(16)}\r\n#{data}\r\n").to_i
+				@io[:bytes_sent] += @io.write("#{data.to_s.bytesize.to_s(16)}\r\n#{data.to_s}\r\n").to_i
 			end
-			def extract_body response
-				if response.body.is_a?(Array)
-					return nil if response.body.empty? 
-					response.body.join
-				elsif response.body.is_a?(String)
-					return nil if response.body.empty? 
-					response.body
-				elsif response.body.nil?
+			def extract_body body
+				if body.is_a?(Array)
+					return nil if body.empty?
+					extract_body body.join
+				elsif body.is_a?(String)
+					return nil if body.empty? 
+					body
+				elsif body.nil?
 					nil
-				elsif response.body.respond_to? :each
+				elsif body.respond_to? :each
 					tmp = ''
-					response.body.each {|s| tmp << s}
-					response.body.close if response.body.respond_to? :close
+					body.each {|s| tmp << s}
+					body.close if body.respond_to? :close
 					return nil if tmp.empty? 
 					tmp
 				end

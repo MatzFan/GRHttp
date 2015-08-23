@@ -60,7 +60,6 @@ module GRHttp
 				ext.compact!
 				response['sec-websocket-extensions'.freeze] = ext.join(', ') if ext.any?
 				response['Sec-WebSocket-Accept'.freeze] = Digest::SHA1.base64digest(request['sec-websocket-key'.freeze] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'.freeze)
-				response.finish
 				# GReactor.log_raw "#{@request[:client_ip]} [#{Time.now.utc}] - #{@connection.object_id} Upgraded HTTP to WebSockets.\n"
 				request.cookies.set_response nil
 				io[:ws_parser] = parser_hash
@@ -70,11 +69,6 @@ module GRHttp
 				io.timeout = 60
 				handler.on_open(WSEvent.new(io, nil)) if handler.respond_to? :on_open
 				return true
-			end
-
-			def is_valid_request? request, response
-				return true if request.upgrade?
-				refuse response
 			end
 
 			# sends the data as one (or more) Websocket frames
@@ -200,7 +194,6 @@ module GRHttp
 				response.status = 400
 				response['sec-websocket-extensions'.freeze] = SUPPORTED_EXTENTIONS.keys.join(', ')
 				response['sec-websocket-version'.freeze] = '13'.freeze
-				response.finish
 				false
 			end
 
@@ -357,7 +350,7 @@ module GRHttp
 					# handle parser[:op_code] == 0 / fin == false (continue a frame that hasn't ended yet)
 					if parser[:fin]
 						io[:ws_extentions].each {|ex| ex.parse_message(parser) }
-						HTTP.make_utf8! parser[:message] if parser[:p_op_code] == 1
+						GRHttp::Base.make_utf8! parser[:message] if parser[:p_op_code] == 1
 						GReactor.queue COMPLETE_FRAME_PROC, [io[:websocket_handler], WSEvent.new(io, parser[:message])]
 						parser[:message] = nil
 						parser[:p_op_code] = nil

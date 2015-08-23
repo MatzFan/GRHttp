@@ -170,7 +170,7 @@ module GRHttp
 				custom_headers = ''
 				custom_headers = options[:headers] if options[:headers].is_a?(String)
 				options[:headers].each {|k, v| custom_headers << "#{k.to_s}: #{v.to_s}\r\n"} if options[:headers].is_a?(Hash)
-				options[:cookies].each {|k, v| raise 'Illegal cookie name' if k.to_s.match(/[\x00-\x20\(\)<>@,;:\\\"\/\[\]\?\=\{\}\s]/); custom_headers << "Cookie: #{ k }=#{ HTTP.encode_url v }\r\n"} if options[:cookies].is_a?(Hash)
+				options[:cookies].each {|k, v| raise 'Illegal cookie name' if k.to_s.match(/[\x00-\x20\(\)<>@,;:\\\"\/\[\]\?\=\{\}\s]/); custom_headers << "Cookie: #{ k }=#{ GRHttp::Base.encode_url v }\r\n"} if options[:cookies].is_a?(Hash)
 
 				# send protocol upgrade request
 				websocket_key = [(Array.new(16) {rand 255} .pack 'c*' )].pack('m0*')
@@ -192,7 +192,7 @@ module GRHttp
 				raise "Connection Refused. Reply was:\r\n #{reply}" unless reply.lines[0].match(/^HTTP\/[\d\.]+ 101/i)
 				raise 'Websocket Key Authentication failed.' unless reply.match(/^Sec-WebSocket-Accept:[\s]*([^\s]*)/i) && reply.match(/^Sec-WebSocket-Accept:[\s]*([^\s]*)/i)[1] == Digest::SHA1.base64digest(websocket_key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11')
 				# read the body's data and parse any incoming data.
-				request = io[:request] ||= HTTPRequest.new(io)
+				request = io[:request] ||= GRHttp::Request.new(io)
 				request[:method] = 'GET'
 				request['host'] = "#{url.host}:#{url.port}"
 				request[:query] = url.path
@@ -200,7 +200,25 @@ module GRHttp
 				# reply.gsub! /set-cookie/i, 'Cookie'
 				reply = StringIO.new reply
 				reply.gets
-				HTTP._parse_http io, reply
+
+				until reply.eof?
+					until request[:headers_complete] || (l = reply.gets).nil?
+						if l.include? ':'
+							l = l.strip.split(/:[\s]?/, 2)
+							l[0].strip! ; l[0].downcase!;
+							request[l[0]] ? (request[l[0]].is_a?(Array) ? (request[l[0]] << l[1]) : request[l[0]] = [request[l[0]], l[1] ]) : (request[l[0]] = l[1])
+						elsif l =~ /^[\r]?\n/
+							request[:headers_complete] = true
+						else
+							#protocol error
+							raise 'Protocol Error, closing connection.'
+							return close
+						end
+					end
+				end
+				reply.string.clear
+
+				GRHttp::Base.parse_request request
 
 				# set-up handler response object. 
 				io[:ws_extentions] = [].freeze
