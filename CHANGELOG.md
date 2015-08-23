@@ -6,6 +6,8 @@ Change log v.0.1.0
 
 **Update**: Update the GReactor version to version 0.1.0, adopting it's new IO API.
 
+**API Changes**: The structure and API of the GRHttp server is now somewhat different. Ease of use had been favored over control in some cases.
+
 **Update**: Updated the autoping feature, as well as some of the logging information supplied. retouched the Rack support, reviewed the FileSession initialization (it's faster now), prepared some groundwork for websocket extentions... all sorts of goodies under the hood.
 
 **Feature**: The Websocket extention API is now complete and it is now possible to write Websocket extentions sch as the `permessage-deflate` extention.

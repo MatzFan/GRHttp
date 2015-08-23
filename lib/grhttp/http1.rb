@@ -103,7 +103,7 @@ module GRHttp
 						elsif ret == false
 							response.clear && (response.status = 404) && (response <<  ::GRHttp::Response::STATUS_CODES[404])
 						end
-					end							
+					end
 					send_response response
 				rescue => e
 					GReactor.error e

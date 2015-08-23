@@ -224,6 +224,11 @@ module GRHttp
 			@status, @body, @headers, @cookies = 200, [], {}, {}
 			self
 		end
+
+		# attempts to write a non-streaming response to the IO. This can be done only once and will quitely fail subsequently.
+		def finish
+			@io.params[:handler].send_response self
+		end
 		
 		# response status codes, as defined.
 		STATUS_CODES = {100=>"Continue".freeze,
