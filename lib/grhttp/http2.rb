@@ -7,6 +7,7 @@ module GRHttp
 		def initialize io, original_request = nil
 			# do stuff, i.e. related to the header:
 			# HTTP2-Settings: <base64url encoding of HTTP/2 SETTINGS payload>
+			GReactor.warn "HTTP/2 connection openne but not HTTP/2 isn't supported yet."
 
 			super(io)
 			#

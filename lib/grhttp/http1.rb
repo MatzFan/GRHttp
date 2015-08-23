@@ -5,7 +5,7 @@ module GRHttp
 		# Legacy HTTP 1 protocol, and protocol upgrade layer (HTTP/2 / Websockets).
 		class HTTP < ::GReactor::Protocol
 			def on_open
-				return switch_protocol(::GRHttp::HTTP2.new @io)if @io.ssl? && @io.ssl_socket.npn_protocol == 'h2'
+				return switch_protocol(::GRHttp::HTTP2.new @io) if @io.ssl? && @io.ssl_socket.npn_protocol == 'h2'
 				@refuse_requests = false
 				@io[:bytes_sent] = 0
 			end
@@ -190,17 +190,17 @@ module GRHttp
 				response.raw_cookies.each {|k,v| out << "Set-Cookie: #{k.to_s}=#{v.to_s}\r\n"}
 				out << "\r\n"
 
-				@io[:bytes_sent] += @io.write(out).to_i
+				@io[:bytes_sent] += (@io.write(out) || 0)
 				out.clear
 				headers.freeze
 				response.raw_cookies.freeze
 			end
 			def send_data data
 				return if data.nil?
-				@io[:bytes_sent] += @io.write(data).to_i
+				@io[:bytes_sent] += (@io.write(data) || 0)
 			end
 			def stream_data data = nil
-				@io[:bytes_sent] += @io.write("#{data.to_s.bytesize.to_s(16)}\r\n#{data.to_s}\r\n").to_i
+				@io[:bytes_sent] += @io.write("#{data.to_s.bytesize.to_s(16)}\r\n#{data.to_s}\r\n") || 0
 			end
 			def extract_body body
 				if body.is_a?(Array)

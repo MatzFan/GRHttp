@@ -43,9 +43,9 @@ module GRHttp
 			end
 			def name
 				if @no_context
-					"permessage-deflate; server_no_context_takeover; client_no_context_takeover#{"; client_max_window_bits=#{0-@client_max_window_bits}" if @client_max_window_bits }"
+					"permessage-deflate;server_no_context_takeover;client_no_context_takeover#{";client_max_window_bits=#{0-@client_max_window_bits}" if @client_max_window_bits }"
 				else
-					"permessage-deflate; server_max_window_bits=#{0-@server_max_window_bits}; #{"client_max_window_bits=#{0-@client_max_window_bits}" if @client_max_window_bits }"
+					"permessage-deflate;server_max_window_bits=#{0-@server_max_window_bits}#{";client_max_window_bits=#{0-@client_max_window_bits}" if @client_max_window_bits }"
 				end
 			end
 			def close
@@ -82,6 +82,7 @@ module GRHttp
 				0
 			end
 			def self.call args
+				return false unless args.include? 'client_max_window_bits'.freeze
 				args.each {|a| return false unless ALLOWED_ARGS[a.downcase.split('=')[0].strip] }
 				WSDeflateExt.new args
 			end

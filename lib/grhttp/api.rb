@@ -23,6 +23,7 @@ module GRHttp
 		params[:upgrade_handler] ||= params[:handler]
 		params[:handler] = Base::HTTP
 		params[:timeout] ||= 5
+		params[:ssl_protocols] ||= ['h2', 'http/1.1']
 		GReactor.listen params
 	end
 

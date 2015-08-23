@@ -16,16 +16,20 @@ puts "Using GRHttp #{GRHttp::VERSION} with GReactor #{GReactor::VERSION}"
 module MyServer
     module_function
     def call request, response
-      return false if request.path == '/refuse'
-      if request.path == '/stream'
-        response.stream_async do
-          sleep 1
-          response << "Hello Streaming\r\n"
-          response.stream_async do
-              sleep 1
-              response << "Goodbye Streaming"
-          end
+      case request.path
+      when '/refuse'
+        return false
+      when '/stream'
+        response.stream_enum("Hello Streaming!".chars.each_with_index) do |c, i|
+          sleep i/10.0
+          response << c
         end
+        return true
+      when '/request'
+        response << (request.to_a.map {|a| a.join ": "} .join "\n")
+        return true
+      when '/headers'
+        response << (request.headers.to_a.map {|a| a.join ": "} .join "\n")
         return true
       end
       # puts "Your last visit here was #{response.session[:last_visit]}" if response.session[:last_visit]
@@ -68,6 +72,7 @@ upgrade_handler = Proc.new {|i, o| MyServer unless i.path == '/refuse'}
 
 GRHttp.start(8) do
     GRHttp.listen upgrade_handler: upgrade_handler, http_handler: MyServer
+    GRHttp.listen upgrade_handler: upgrade_handler, http_handler: MyServer, port: 3030, ssl: true
 end
 
 # GRHttp.start {   GRHttp.listen {|request, response| 'Hello World!' }      }
