@@ -131,7 +131,7 @@ module GRHttp
 
 				send_headers response
 				return if request.head?
-				send_data body
+				response.bytes_written += (@io.write(body) || 0) if body
 				close unless keep_alive
 				log_finished response
 			end
@@ -145,9 +145,9 @@ module GRHttp
 				return if response.request.head?
 				body = extract_body response.body
 				response.body = nil
-				stream_data body if body || finish
+				response.bytes_written += stream_data(body) if body || finish
 				if finish
-					stream_data '' unless body.nil?
+					response.bytes_written += stream_data('') unless body.nil?
 					log_finished response
 				end
 				true
@@ -190,17 +190,13 @@ module GRHttp
 				response.raw_cookies.each {|k,v| out << "Set-Cookie: #{k.to_s}=#{v.to_s}\r\n"}
 				out << "\r\n"
 
-				@io[:bytes_sent] += (@io.write(out) || 0)
+				response.bytes_written += (@io.write(out) || 0)
 				out.clear
 				headers.freeze
 				response.raw_cookies.freeze
 			end
-			def send_data data
-				return if data.nil?
-				@io[:bytes_sent] += (@io.write(data) || 0)
-			end
 			def stream_data data = nil
-				@io[:bytes_sent] += @io.write("#{data.to_s.bytesize.to_s(16)}\r\n#{data.to_s}\r\n") || 0
+				 @io.write("#{data.to_s.bytesize.to_s(16)}\r\n#{data.to_s}\r\n") || 0
 			end
 			def extract_body body
 				if body.is_a?(Array)
@@ -221,10 +217,11 @@ module GRHttp
 			end
 
 			def log_finished response
-				t_n = Time.now
-				request = response.request
-				GReactor.log_raw("#{request[:client_ip]} [#{t_n.utc}] \"#{request[:method]} #{request[:original_path]} #{request[:scheme]}\/#{request[:version]}\" #{response.status} #{@io[:bytes_sent].to_s} #{((t_n - request[:time_recieved])*1000).round(2)}ms\n").clear if GReactor.logger
 				@io[:bytes_sent] = 0
+				request = response.request
+				return if GReactor.logger.nil? || request[:no_log]
+				t_n = Time.now
+				GReactor.log_raw("#{request[:client_ip]} [#{t_n.utc}] \"#{request[:method]} #{request[:original_path]} #{request[:scheme]}\/#{request[:version]}\" #{response.status} #{response.bytes_written.to_s} #{((t_n - request[:time_recieved])*1000).round(2)}ms\n").clear
 			end
 		end
 	end

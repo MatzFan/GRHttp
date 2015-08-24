@@ -16,6 +16,8 @@ module GRHttp
 		attr_reader :io
 		# the request.
 		attr_accessor :request
+		# Logs the number of bytes written.
+		attr_accessor :bytes_written
 
 		# the response object responds to a specific request on a specific io.
 		# hence, to initialize a response object, a request must be set.
@@ -30,6 +32,7 @@ module GRHttp
 			@request.cookies.set_response self
 			@cookies = {}
 			@io = request.io
+			@bytes_written = 0
 			# propegate flash object
 			@flash = Hash.new do |hs,k|
 				hs["magic_flash_#{k.to_s}".to_sym] if hs.has_key? "magic_flash_#{k.to_s}".to_sym

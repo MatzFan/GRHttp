@@ -44,6 +44,7 @@ module GRHttp
 				response.body = res[2]
 				response.raw_cookies.clear
 				response.headers['Set-Cookie'] = response.headers.delete('Set-Cookie').split("\n").join("\r\nSet-Cookie: ") if response.headers['Set-Cookie']
+				response.request[:no_log] = true
 				true
 			end
 
