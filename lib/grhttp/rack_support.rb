@@ -51,39 +51,6 @@ module GRHttp
 			protected
 
 
-			def self.run_rack request, app
-				status = res[0]
-				finished = true
-				body = nil
-				headers = {}
-
-				# fix connection header? - Default to closing the connection rather than keep-alive. Turbolinks and Rack have issues.
-				# if res[1]['Connection'.freeze] =~ /^k/i || (@request[:version].to_f > 1 && @request['connection'.freeze].nil?) || @request['connection'.freeze] =~ /^k/i
-				if res[1]['Connection'.freeze] =~ /^k/i || (request['connection'.freeze] && request['connection'.freeze] =~ /^k/i)
-					@io[:keep_alive] = true
-					# res[1]['Connection'.freeze] ||= "Keep-Alive\r\nKeep-Alive: timeout=5".freeze
-				else
-					res[1]['Connection'.freeze] ||= "close".freeze unless request.io[:keep_alive]
-				end
-
-				# @io[:keep_alive] = true if res[1]['Connection'].to_s.match(/^k/i)
-				# res[1]['Connection'] ||= "close"
-
-				# Send Rack's headers
-				out = ''
-				out << "#{@http_version} #{@status} #{STATUS_CODES[@status] || 'unknown'}\r\n" #"Date: #{Time.now.httpdate}\r\n"
-				out << ('Set-Cookie: ' + (res[1].delete('Set-Cookie').split("\n")).join("\r\nSet-Cookie: ") + "\r\n") if res[1]['Set-Cookie'.freeze]
-				res[1].each {|h, v| out << "#{h.to_s}: #{v}\r\n"}
-
-				out << "\r\n".freeze
-				@io.write out
-				out.clear
-
-				# send body using Rack's rendering 
-				res[2].each {|d| @io.write d }
-				res[2].close if res[2].respond_to? :close
-				@io.close unless @io[:keep_alive]
-			end
 			def self.rack_env request
 				env = RACK_DICTIONARY.dup
 				# env['pl.request'] = @request

@@ -71,7 +71,7 @@ module GRHttp
 			"#{base_url switch_protocol}#{self[:original_path]}"
 		end
 
-		# the protocol managing this request
+		# the protocol's scheme (http/https/ws/wss) managing this request
 		def scheme
 			self[:scheme]
 		end

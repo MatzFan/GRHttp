@@ -296,8 +296,6 @@ module GRHttp
 
 		protected
 
-
-
 		# Sets the http streaming flag and sends the responses headers, so that the response could be handled asynchronously.
 		#
 		# if this flag is not set, the response will try to automatically finish its job
