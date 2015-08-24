@@ -22,6 +22,7 @@ module GRHttp
 				h = io[:websocket_handler]
 				h.on_close(WSEvent.new(io, nil)) if h.respond_to? :on_close
 				io[:ws_extentions].each { |ex| ex.close }
+				io[:ws_extentions].clear
 			end
 
 			# Sets the message byte size limit for a Websocket message. Defaults to 0 (no limit)
@@ -258,7 +259,6 @@ module GRHttp
 					if parser[:fin]
 						io[:ws_extentions].each {|ex| ex.parse_message(parser) }
 						GRHttp::Base.make_utf8! parser[:message] if parser[:p_op_code] == 1
-						puts parser[:message].encoding
 						GReactor.queue COMPLETE_FRAME_PROC, [io[:websocket_handler], WSEvent.new(io, parser[:message])]
 						parser[:message] = nil
 						parser[:p_op_code] = nil

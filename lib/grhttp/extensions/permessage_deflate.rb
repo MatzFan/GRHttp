@@ -50,8 +50,8 @@ module GRHttp
 				end
 			end
 			def close
-				@deflator.close if @deflator
-				@inflator.close if @inflator
+				(@deflator.close rescue true) if @deflator
+				(@inflator.close rescue true) if @inflator
 			end
 			def parse_message parser
 				if parser[:rsv1]
