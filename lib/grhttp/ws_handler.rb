@@ -73,22 +73,22 @@ module GRHttp
 			end
 
 			# sends the data as one (or more) Websocket frames
-			def send_data io, data, op_code = nil, fin = true
+			def send_data io, data, op_code = nil, fin = true, ext = 0
 				return false if !data || data.empty?
 				return false if io.nil? || io.closed?
-				# apply extenetions to the frame
-				ext = 0
-				op_code ||= (data.encoding == ::Encoding::UTF_8 ? 1 : 2)
-				io[:ws_extentions].each { |ex| ext |= ex.edit_message data } unless op_code
+				data = data.dup
+				unless op_code # apply extenetions to the message as a whole
+					op_code = (data.encoding == ::Encoding::UTF_8 ? 1 : 2) 
+					io[:ws_extentions].each { |ex| ext |= ex.edit_message data } if io[:ws_extentions]
+				end
 				byte_size = data.bytesize
 				if byte_size > (FRAME_SIZE_LIMIT+2)
-					data = data.dup
 					sections = byte_size/FRAME_SIZE_LIMIT + (byte_size%FRAME_SIZE_LIMIT ? 1 : 0)
-					send_data( io, data.slice!( 0...FRAME_SIZE_LIMIT ), op_code, data.empty?) && op_code = 0 until data.empty?
+					send_data( io, data.slice!( 0...FRAME_SIZE_LIMIT ), op_code, data.empty?, ext) && (ext = op_code = 0) until data.empty?
 					# sections.times { |i| send_data io, data.slice!( 0...FRAME_SIZE_LIMIT ), op_code, (i==sections) }
 				end
 				# # ext |= call each io.protocol.extenetions with data #changes data and returns flags to be set
-				io[:ws_extentions].each { |ex| ext |= ex.edit_frame data }
+				io[:ws_extentions].each { |ex| ext |= ex.edit_frame data } if io[:ws_extentions]
 				header = ( (fin ? 0b10000000 : 0) | (op_code & 0b00001111) | ext).chr.force_encoding(::Encoding::ASCII_8BIT)
 
 				if byte_size < 125
@@ -258,6 +258,7 @@ module GRHttp
 					if parser[:fin]
 						io[:ws_extentions].each {|ex| ex.parse_message(parser) }
 						GRHttp::Base.make_utf8! parser[:message] if parser[:p_op_code] == 1
+						puts parser[:message].encoding
 						GReactor.queue COMPLETE_FRAME_PROC, [io[:websocket_handler], WSEvent.new(io, parser[:message])]
 						parser[:message] = nil
 						parser[:p_op_code] = nil
