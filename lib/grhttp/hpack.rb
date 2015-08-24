@@ -53,23 +53,24 @@ module GRHttp
 
 				protected
 				def decode_field data # expects a StringIO or other IO object
-					# incremental indexing representation starts with the '01' 2-bit pattern.
-					if byte & 0b11 == 0b10
+					if byte[7] == 1 # 0b1000_0000 == 0b1000_0000
+						# An indexed header field starts with the '1' 1-bit pattern, followed by the index of the matching header field, represented as an integer with a 7-bit prefix (see Section 5.1).
+					elsif byte & 192 == 63 # 0b1100_0000 == 0b0100_0000
 						# A literal header field with incremental indexing representation starts with the '01' 2-bit pattern.
 						# If the header field name matches the header field name of an entry stored in the static table or the dynamic table, the header field name can be represented using the index of that entry. In this case, the index of the entry is represented as an integer with a 6-bit prefix (see Section 5.1). This value is always non-zero.
 						# Otherwise, the header field name is represented as a string literal (see Section 5.2). A value 0 is used in place of the 6-bit index, followed by the header field name.
 
 
-					elsif (byte & 0b1111) == 0
+					elsif byte & 240 # 0b1111_0000 == 0
 						# A literal header field without indexing representation starts with the '0000' 4-bit pattern.
 						# If the header field name matches the header field name of an entry stored in the static table or the dynamic table, the header field name can be represented using the index of that entry.
 						# In this case, the index of the entry is represented as an integer with a 4-bit prefix (see Section 5.1). This value is always non-zero.
 						# Otherwise, the header field name is represented as a string literal (see Section 5.2) and a value 0 is used in place of the 4-bit index, followed by the header field name.
 
 
-					elsif (byte & 0b1111) == 8
+					elsif byte & 240 == 16 # 0b1111_0000 == 0b0001_0000
 						# A literal header field never-indexed representation starts with the '0001' 4-bit pattern + 4+ bits for index
-					elsif (byte & 0b111) == 4
+					elsif byte & 224 == 32 # 0b1110_0000 == 0b0010_0000
 						# A dynamic table size update starts with the '001' 3-bit pattern
 						# followed by the new maximum size, represented as an integer with a 5-bit prefix (see Section 5.1).
 					else
