@@ -36,96 +36,66 @@ module GRHttp
 					return tmp if tmp
 				end
 				# response.quite!
-				response.run_rack @app
-			end
-		end
-	end
-
-	class HTTPResponse
-
-		def run_rack app
-			res = app.call(rack_env)
-			raise "Rack app returned an unexpected value: #{res.to_s}" unless res && res.is_a?(Array)
-			@status = res[0]
-			@finished = true
-			@body = nil
-			@headers.clear
-			@headers.freeze
-
-			# fix connection header? - Default to closing the connection rather than keep-alive. Turbolinks and Rack have issues.
-			# if res[1]['Connection'.freeze] =~ /^k/i || (@request[:version].to_f > 1 && @request['connection'.freeze].nil?) || @request['connection'.freeze] =~ /^k/i
-			if res[1]['Connection'.freeze] =~ /^k/i || (@request['connection'.freeze] && @request['connection'.freeze] =~ /^k/i)
-				@io[:keep_alive] = true
-				# res[1]['Connection'.freeze] ||= "Keep-Alive\r\nKeep-Alive: timeout=5".freeze
-			else
-				res[1]['Connection'.freeze] ||= "close".freeze unless @io[:keep_alive]
+				res = @app.call rack_env(request)
+				raise "Rack app returned an unexpected value: #{res.to_s}" unless res && res.is_a?(Array)
+				response.status = res[0]
+				response.headers.clear
+				response.headers.update res[1]
+				response.body = res[2]
+				response.raw_cookies.clear
+				response.headers['Set-Cookie'] = response.headers.delete('Set-Cookie').split("\n").join("\r\nSet-Cookie: ") if response.headers['Set-Cookie']
+				response.request[:no_log] = true
+				true
 			end
 
-			# @io[:keep_alive] = true if res[1]['Connection'].to_s.match(/^k/i)
-			# res[1]['Connection'] ||= "close"
+			protected
 
-			# Send Rack's headers
-			out = ''
-			out << "#{@http_version} #{@status} #{STATUS_CODES[@status] || 'unknown'}\r\n" #"Date: #{Time.now.httpdate}\r\n"
-			out << ('Set-Cookie: ' + (res[1].delete('Set-Cookie').split("\n")).join("\r\nSet-Cookie: ") + "\r\n") if res[1]['Set-Cookie'.freeze]
-			res[1].each {|h, v| out << "#{h.to_s}: #{v}\r\n"}
 
-			out << "\r\n".freeze
-			@io.write out
-			out.clear
+			def self.rack_env request
+				env = RACK_DICTIONARY.dup
+				# env['pl.request'] = @request
+				# env.each {|k, v| env[k] = @request[v] if v.is_a?(Symbol)}
+				RACK_ADDON.each {|k, v| env[k] = (request[v].is_a?(String) ? ( request[v].frozen? ? request[v].dup.force_encoding('ASCII-8BIT') : request[v].force_encoding('ASCII-8BIT') ): request[v])}
+				request.each {|k, v| env["HTTP_#{k.upcase.gsub('-', '_')}"] = v if k.is_a?(String) }
+				env['rack.input'.freeze] ||= StringIO.new(''.force_encoding('ASCII-8BIT'.freeze))
+				env['CONTENT_LENGTH'.freeze] = env.delete 'HTTP_CONTENT_LENGTH'.freeze if env['HTTP_CONTENT_LENGTH'.freeze]
+				env['CONTENT_TYPE'.freeze] = env.delete 'HTTP_CONTENT_TYPE'.freeze if env['HTTP_CONTENT_TYPE'.freeze]
+				env['HTTP_VERSION'.freeze] = "HTTP/#{request[:version].to_s}"
+				env['QUERY_STRING'.freeze] ||= ''
+				env['rack.errors'.freeze] = StringIO.new('')
+				env
+			end
 
-			# send body using Rack's rendering 
-			res[2].each {|d| @io.write d }
-			res[2].close if res[2].respond_to? :close
-			@io.close unless @io[:keep_alive]
+			RACK_ADDON = {
+				'PATH_INFO'			=> :original_path,
+				'REQUEST_PATH'		=> :path,
+				'QUERY_STRING'		=> :quary_params,
+				'SERVER_NAME'		=> :host_name,
+				'REQUEST_URI'		=> :query,
+				'SERVER_PORT'		=> :port,
+				'REMOTE_ADDR'		=> :client_ip,
+				# 'gr.params'			=> :params,
+				# 'gr.cookies'		=> :cookies,
+				'REQUEST_METHOD'	=> :method,
+				'rack.url_scheme'	=> :scheme,
+				'rack.input'		=> :rack_input
+			}
+
+			RACK_DICTIONARY = {
+				"GATEWAY_INTERFACE"	=>"CGI/1.2",
+				'SERVER_SOFTWARE'	=> "GRHttp v. #{GRHttp::VERSION} on GReactor #{GReactor::VERSION}",
+				'SCRIPT_NAME'		=> ''.force_encoding('ASCII-8BIT'),
+				'rack.logger'		=> GReactor,
+				'rack.multithread'	=> true,
+				'rack.multiprocess'	=> (GReactor.forking?),
+				# 'rack.hijack?'		=> false,
+				# 'rack.hijack_io'	=> nil,
+				'rack.run_once'		=> false
+			}
+			RACK_DICTIONARY['rack.version'] = ::Rack.version.split('.') if defined?(::Rack)
+			HASH_SYM_PROC = Proc.new {|h,k| k = (Symbol === k ? k.to_s : k.to_s.to_sym); h.has_key?(k) ? h[k] : (h["gr.#{k.to_s}"] if h.has_key?("gr.#{k.to_s}") ) }
 		end
-		protected
-		HASH_SYM_PROC = Proc.new {|h,k| k = (Symbol === k ? k.to_s : k.to_s.to_sym); h.has_key?(k) ? h[k] : (h["gr.#{k.to_s}"] if h.has_key?("gr.#{k.to_s}") ) }
-
-		def rack_env
-			env = RACK_DICTIONARY.dup
-			# env['pl.request'] = @request
-			# env.each {|k, v| env[k] = @request[v] if v.is_a?(Symbol)}
-			RACK_ADDON.each {|k, v| env[k] = (@request[v].is_a?(String) ? ( @request[v].frozen? ? @request[v].dup.force_encoding('ASCII-8BIT') : @request[v].force_encoding('ASCII-8BIT') ): @request[v])}
-			@request.each {|k, v| env["HTTP_#{k.upcase.gsub('-', '_')}"] = v if k.is_a?(String) }
-			env['rack.input'.freeze] ||= StringIO.new(''.force_encoding('ASCII-8BIT'.freeze))
-			env['CONTENT_LENGTH'.freeze] = env.delete 'HTTP_CONTENT_LENGTH'.freeze if env['HTTP_CONTENT_LENGTH'.freeze]
-			env['CONTENT_TYPE'.freeze] = env.delete 'HTTP_CONTENT_TYPE'.freeze if env['HTTP_CONTENT_TYPE'.freeze]
-			env['HTTP_VERSION'.freeze] = "HTTP/#{request[:version].to_s}"
-			env['QUERY_STRING'.freeze] ||= ''
-			env['rack.errors'.freeze] = StringIO.new('')
-			env
-		end
-
-		RACK_ADDON = {
-			'PATH_INFO'			=> :original_path,
-			'REQUEST_PATH'		=> :path,
-			'QUERY_STRING'		=> :quary_params,
-			'SERVER_NAME'		=> :host_name,
-			'REQUEST_URI'		=> :query,
-			'SERVER_PORT'		=> :port,
-			'REMOTE_ADDR'		=> :client_ip,
-			# 'gr.params'			=> :params,
-			# 'gr.cookies'		=> :cookies,
-			'REQUEST_METHOD'	=> :method,
-			'rack.url_scheme'	=> :scheme,
-			'rack.input'		=> :rack_input
-		}
-
-		RACK_DICTIONARY = {
-			"GATEWAY_INTERFACE"	=>"CGI/1.2",
-			'SERVER_SOFTWARE'	=> "GRHttp v. #{GRHttp::VERSION} on GReactor #{GReactor::VERSION}",
-			'SCRIPT_NAME'		=> ''.force_encoding('ASCII-8BIT'),
-			'rack.logger'		=> GReactor,
-			'rack.multithread'	=> true,
-			'rack.multiprocess'	=> (GReactor.forking?),
-			# 'rack.hijack?'		=> false,
-			# 'rack.hijack_io'	=> nil,
-			'rack.run_once'		=> false
-		}
-		RACK_DICTIONARY['rack.version'] = ::Rack.version.split('.') if defined?(::Rack)
 	end
-
 end
 
 # ENV["RACK_HANDLER"] = 'grhttp'

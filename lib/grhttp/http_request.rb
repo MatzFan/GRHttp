@@ -1,16 +1,17 @@
 module GRHttp
 
 	# This class is the part of the GRHttp server.
-	# The request object is a Hash and the HTTPRequest provides
-	# simple shortcuts and access to the request' Hash data.
+	# The request object is a Hash and the Request provides
+	# simple shortcuts and access to the request's Hash data.
 	#
 	#
-	class HTTPRequest < Hash
+	# An HTTP Request
+	class Request < Hash
 
 		def initialize io = nil
 			super()
 			self[:io] = io if io
-			self[:cookies] = Cookies.new
+			self[:cookies] = Base::Cookies.new
 			self[:params] = {}
 		end
 
@@ -55,20 +56,21 @@ module GRHttp
 			self[:path] = new_path
 		end
 
+		# The HTTP version for this request
+		def version
+			self[:version]
+		end
+
 		# the base url ([http/https]://host[:port])
-		def base_url switch_protocol = nil
+		def base_url switch_scheme = nil
 			"#{switch_protocol || self[:scheme]}://#{self[:host_name]}#{self[:port]? ":#{self[:port]}" : ''}"
 		end
 
 		# the request's url, without any GET parameters ([http/https]://host[:port]/path)
-		def request_url switch_protocol = nil
+		def request_url switch_scheme = nil
 			"#{base_url switch_protocol}#{self[:original_path]}"
 		end
 
-		# the protocol managing this request
-		def protocol
-			self[:scheme]
-		end
 		# the protocol's scheme (http/https/ws/wss) managing this request
 		def scheme
 			self[:scheme]
@@ -143,11 +145,10 @@ module GRHttp
 		def xml?
 			self[HTTP_CTYPE].match HTTP_XML
 		end
-		HTTP_UPGRADE = 'upgrade'.freeze ; HTTP_UPGRADE_REGEX = /upg/i ; HTTP_WEBSOCKET = 'websocket'.freeze; HTTP_CONNECTION = 'connection'.freeze
 		# returns true if this is a websocket upgrade request
-		def upgrade?
-			@is_upgrade ||= (self[HTTP_UPGRADE] && self[HTTP_UPGRADE].to_s.downcase == HTTP_WEBSOCKET &&  self[HTTP_CONNECTION].to_s =~ HTTP_UPGRADE_REGEX && true)
+		def websocket?
+			@is_websocket ||= (self['upgrade'.freeze] && self['upgrade'.freeze].to_s =~ /websocket/i.freeze &&  self['connection'.freeze].to_s =~ /upg/i.freeze && true)
 		end
-
+		alias :upgrade? :websocket?
 	end
 end

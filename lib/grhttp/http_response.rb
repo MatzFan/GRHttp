@@ -3,22 +3,21 @@ module GRHttp
 	# this class handles HTTP response.
 	#
 	# The response can be sent in stages but should complete within the scope of the connecton's message. Please notice that headers and status cannot be changed once the response started sending data.
-	class HTTPResponse
-
-		#the response's status code
+	class Response
+		# the response's status code
 		attr_accessor :status
-		#the response's headers
+		# the response's headers
 		attr_reader :headers
-		#the flash cookie-jar (single-use cookies, that survive only one request).
+		# the flash cookie-jar (single-use cookies, that survive only one request).
 		attr_reader :flash
-		#the response's body buffer container (an array). This object is removed once the headers are sent and all write operations hang after that point.
-		attr_reader :body
-		#bytes sent to the asynchronous que so far - excluding headers (only the body object).
-		attr_reader :bytes_sent
-		#the io through which the response will be sent.
+		# the response's body buffer container (an array). This object is removed once the headers are sent and all write operations hang after that point.
+		attr_accessor :body
+		# the io through which the response will be sent.
 		attr_reader :io
-		#the request.
+		# the request.
 		attr_accessor :request
+		# Logs the number of bytes written.
+		attr_accessor :bytes_written
 
 		# the response object responds to a specific request on a specific io.
 		# hence, to initialize a response object, a request must be set.
@@ -26,17 +25,14 @@ module GRHttp
 		# use, at the very least `HTTPResponse.new request`
 		def initialize request, status = 200, headers = {}, content = nil
 			@request = request
+			Base.parse_request request
 			@status = status
 			@headers = headers
 			@body = content || []
-			@io = request[:io]
 			@request.cookies.set_response self
-			@http_version = 'HTTP/1.1' # request.version
-			@bytes_sent = 0
-			@finished = @streaming = false
 			@cookies = {}
-			@quite = false
-			@chunked = false
+			@io = request.io
+			@bytes_written = 0
 			# propegate flash object
 			@flash = Hash.new do |hs,k|
 				hs["magic_flash_#{k.to_s}".to_sym] if hs.has_key? "magic_flash_#{k.to_s}".to_sym
@@ -49,17 +45,6 @@ module GRHttp
 		# returns true if headers were already sent
 		def headers_sent?
 			@headers.frozen?
-		end
-
-		# returns true if the response is already finished (the client isn't expecting any more data).
-		def finished?
-			@finished
-		end
-
-		# Forces the `finished` response's flag to true - use this to avoide sending a response or before manualy
-		# responding using the IO object.
-		def cancel!
-			@finished = true
 		end
 
 		# Creates a streaming block. Once all streaming blocks are done, the response will automatically finish.
@@ -88,7 +73,7 @@ module GRHttp
 		# @return [true, Exception] The method returns immidiatly with a value of true unless it is impossible to stream the response (an exception will be raised) or a block wasn't supplied.
 		def stream_async &block
 			raise "Block required." unless block
-			start_streaming unless @finished
+			start_streaming
 			@io[:http_sblocks_count] += 1
 			@stream_proc ||= Proc.new { |block| raise "IO closed. Streaming failed." if io.io.closed?; block.call; io[:http_sblocks_count] -= 1; finish_streaming }
 			GReactor.queue @stream_proc, [block]
@@ -126,6 +111,7 @@ module GRHttp
 		end
 
 
+
 		# Creates and returns the session storage object.
 		#
 		# By default and for security reasons, session id's created on a secure connection will NOT be available on a non secure connection (SSL/TLS).
@@ -151,26 +137,28 @@ module GRHttp
 			@request.cookies
 		end
 
-		# supresses logging on success.
-		def quite!
-			@quite = true
+		# Returns the response's encoded cookie hash.
+		#
+		# This method allows direct editing of the cookies about to be set.
+		def raw_cookies
+			@cookies
 		end
 
 		# pushes data to the buffer of the response. this is the preferred way to add data to the response.
 		#
 		# If the headers were already sent, this will also send the data and hang until the data was sent.
 		def << str
-			@body ? @body.push(str) : (request.head? ? false :  send_body(str))
+			( @body ? @body.push(str) : ( (@body = str) && @io.params[:handler].stream_response(self) ) ) if str
 			self
-			# write if streaming?
 		end
 
 		# returns a response header, if set.
 		def [] header
-			headers[header] # || @cookies[header]
+			header.is_a?(String) ? (header.frozen? ? header : header.downcase!) : (header.is_a?(Symbol) ? (header = header.to_s.downcase) : (return false))
+			headers[header]
 		end
 
-		# sets a response header. response headers should be a down-case String or Symbol.
+		# sets a response header. response headers should be a downcase String (not a symbol or any other object).
 		#
 		# this is the prefered to set a header.
 		#
@@ -180,12 +168,12 @@ module GRHttp
 		def []= header, value
 			raise 'Cannot set headers after the headers had been sent.' if headers_sent?
 			return (@headers.delete(header) && nil) if header.nil?
-			header.is_a?(String) ? (header.frozen? ? header : header.downcase!) : (header.is_a?(Symbol) ? (header = header.to_s.downcase.to_sym) : (return false))
+			header.is_a?(String) ? (header.frozen? ? header : header.downcase!) : (header.is_a?(Symbol) ? (header = header.to_s.downcase) : (return false))
 			headers[header]	= value
 		end
 
 
-		COOKIE_NAME_REGEXP = /[\x00-\x20\(\)<>@,;:\\\"\/\[\]\?\=\{\}\s]/
+		COOKIE_NAME_REGEXP = /[\x00-\x20\(\)\<\>@,;:\\\"\/\[\]\?\=\{\}\s]/
 
 		# Sets/deletes cookies when headers are sent.
 		#
@@ -208,12 +196,12 @@ module GRHttp
 		def set_cookie name, value, params = {}
 			raise 'Cannot set cookies after the headers had been sent.' if headers_sent?
 			name = name.to_s
-			raise 'Illegal cookie name' if name.match(COOKIE_NAME_REGEXP)
+			raise 'Illegal cookie name' if name =~ COOKIE_NAME_REGEXP
 			params[:expires] = (Time.now - 315360000) unless value
 			value ||= 'deleted'.freeze
 			params[:expires] ||= (Time.now + 315360000) unless params[:max_age]
 			params[:path] ||= '/'.freeze
-			value = HTTP.encode_url(value)
+			value = GRHttp::Base.encode_url(value)
 			if params[:max_age]
 				value << ('; Max-Age=%s' % params[:max_age])
 			else
@@ -231,42 +219,18 @@ module GRHttp
 			set_cookie name, nil
 		end
 
-		# clears the response object, unless headers were already sent.
+		# clears the response object, unless headers were already sent (the response is already on it's way, at least in part).
 		#
 		# returns false if the response was already sent.
 		def clear
-			return false if headers.frozen? || @finished
+			return false if @headers.frozen?
 			@status, @body, @headers, @cookies = 200, [], {}, {}
 			self
 		end
 
-		# sends the response object. headers will be frozen (they can only be sent at the head of the response).
-		#
-		# the response will remain open for more data to be sent through (using `response << data` and `response.write`).
-		def write(str = nil)
-			raise 'HTTPResponse IO MISSING: cannot send http response without an io.' unless @io
-			@body << str if @body && str
-			return if send_headers
-			return if request.head?
-			send_body(str)
-			self
-		end
-		alias :send :write
-
-		# Sends the response and flags the response as complete. Future data should not be sent. Your code might attempt sending data (which would probbaly be ignored by the client or raise an exception).
+		# attempts to write a non-streaming response to the IO. This can be done only once and will quitely fail subsequently.
 		def finish
-			raise "Response already sent" if @finished
-			@headers['content-length'.freeze] ||= (@body = @body.join).bytesize if !headers_sent? && @body.is_a?(Array)
-			self.write
-			@io.write "0\r\n\r\n" if @chunked
-			@finished = true
-			@io.close unless @io[:keep_alive]
-			finished_log
-		end
-
-		# Danger Zone (internally used method, use with care): attempts to finish the response - if it was not flaged as streaming or completed.
-		def try_finish
-			finish unless @finished
+			@io.params[:handler].send_response self
 		end
 		
 		# response status codes, as defined.
@@ -332,78 +296,6 @@ module GRHttp
 
 		protected
 
-		def finished_log
-			return if @quite
-			t_n = Time.now
-			GReactor.log_raw("#{@request[:client_ip]} [#{t_n.utc}] \"#{@request[:method]} #{@request[:original_path]} #{@request[:scheme]}\/#{@request[:version]}\" #{@status} #{bytes_sent.to_s} #{((t_n - @request[:time_recieved])*1000).round(2)}ms\n").clear # %0.3f
-		end
-
-		# Danger Zone (internally used method, use with care): fix response's headers before sending them (date, connection and transfer-coding).
-		def fix_cookie_headers
-			# remove old flash cookies
-			request.cookies.keys.each do |k|
-				if k.to_s.start_with? 'magic_flash_'.freeze
-					set_cookie k, nil
-					flash.delete k
-				end
-			end
-			#set new flash cookies
-			@flash.each do |k,v|
-				set_cookie "magic_flash_#{k.to_s}", v
-			end
-			@flash.freeze
-		end
-		# Danger Zone (internally used method, use with care): fix response's headers before sending them (date, connection and transfer-coding).
-		def send_headers
-			return false if @headers.frozen?
-			fix_cookie_headers
-			out = ''
-
-			out << "#{@http_version} #{@status} #{STATUS_CODES[@status] || 'unknown'}\r\nDate: #{Time.now.httpdate}\r\n"
-
-			# unless @headers['connection'] || (@request[:version].to_f <= 1 && (@request['connection'].nil? || !@request['connection'].match(/^k/i))) || (@request['connection'] && @request['connection'].match(/^c/i))
-			if (@request[:version].to_f > 1 && @request['connection'.freeze].nil?) || @request['connection'.freeze].to_s =~ /^k/i || (@headers['connection'.freeze] && @headers['connection'.freeze] =~ /^k/i) # simpler
-				@io[:keep_alive] = true
-				out << "Connection: Keep-Alive\r\nKeep-Alive: timeout=5\r\n".freeze
-			else
-				@headers['connection'.freeze] ||= 'close'.freeze
-			end
-
-			if @headers['content-length'.freeze]
-				@chunked = false
-			else
-				@chunked = true
-				out << "Transfer-Encoding: chunked\r\n".freeze
-			end
-			@headers.each {|k,v| out << "#{k.to_s}: #{v}\r\n"}
-			out << "Cache-Control: max-age=0, no-cache\r\n".freeze unless @headers['cache-control'.freeze]
-			@cookies.each {|k,v| out << "Set-Cookie: #{k.to_s}=#{v.to_s}\r\n"}
-			out << "\r\n"
-
-			@io.write out
-			out.clear
-			@headers.freeze
-			if @body && @body.is_a?(Array)
-				@body = @body.join 
-			end
-			send_body(@body) && (@body.frozen? ? true : @body.clear) if @body && !@body.empty? && !request.head?
-			@body = nil
-			true
-		end
-
-		# sends the body or part thereof
-		def send_body data
-			return nil unless data
-			if @chunked
-				@io.write "#{data.bytesize.to_s(16)}\r\n#{data}\r\n"
-				@bytes_sent += data.bytesize
-			else
-				@io.write data
-				@bytes_sent += data.bytesize
-			end
-
-		end
-
 		# Sets the http streaming flag and sends the responses headers, so that the response could be handled asynchronously.
 		#
 		# if this flag is not set, the response will try to automatically finish its job
@@ -413,10 +305,8 @@ module GRHttp
 		# or the connection will not close properly and the client will be left expecting more information.
 		def start_streaming
 			raise "Cannot start streaming after headers were sent!" if headers_sent?
-			@finished = @chunked = true
-			headers['connection'.freeze] = 'Close'.freeze
 			@io[:http_sblocks_count] ||= 0
-			write nil
+			@io.params[:handler].stream_response self
 		end
 
 		# Sends the complete response signal for a streaming response.
@@ -424,12 +314,9 @@ module GRHttp
 		# Careful - sending the completed response signal more than once might case disruption to the HTTP connection.
 		def finish_streaming
 			return unless @io[:http_sblocks_count] == 0
-			@finished = false
-			finish
-			@io.close
+			@io.params[:handler].stream_response self, true
 		end
 	end
-
 end
 
 ######

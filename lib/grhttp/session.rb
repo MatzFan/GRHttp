@@ -11,7 +11,6 @@ module GRHttp
 				# called by the Plezi framework to initiate a session with the id requested
 				def initialize id
 					@filename = File.join Dir.tmpdir, "grhttp_#{GRHttp.session_token}_#{id}"
-					# load data from tmp-file
 					@data ||= {}
 				end
 				# Get a key from the session data store.
@@ -40,6 +39,7 @@ module GRHttp
 
 				# @return [Hash] returns a shallow copy of the current session data as a Hash.
 				def to_h
+					load
 					@data.dup
 				end
 

@@ -11,10 +11,13 @@ require 'greactor'
 
 require "grhttp/version"
 
-require "grhttp/http_helpers"
-require "grhttp/http_handler"
+require "grhttp/http_base"
 
-require "grhttp/http_cookies"
+require "grhttp/http1"
+
+require "grhttp/hpack"
+require "grhttp/http2"
+
 require "grhttp/session"
 
 
