@@ -4,18 +4,75 @@ module GRHttp
 	class HTTP2 < GReactor::Protocol
 		module HPACK
 			class IndexTable
+				attr_reader :size
+				attr_accessor :max_size
 				def initialize
 					@list = []
+					@max_size = @size = 4_096 # initial defaul size by standard
+				end
+				def [] index
+					return STATIC_LIST[index] if index < STATIC_LENGTH
+					@list[index - STATIC_LENGTH]
+				end
+				def insert name, value = nil
+					@list.unshift ( value ? [name, value] : [name])
+					@list.pop while @list.count > @max_size
+					self
+				end
+				def replace index, name, value
+					index = index - STATIC_LENGTH
+					raise 'HPACK Error - index invalid' if index < 0
+					@list[index] = value ? [name, value] : [name]
+					self
+				end
+				def resize value
+					@size = value if value && value < @max_size
+					@list.pop while @list.count > @max_size
+					self
 				end
 			end
-			class Decoder
+
+			class Context
+				def initialize
+					@list = IndexTable.new
+				end
+
+				def decode data
+				end
+
+				# enabling cacheing will add new headers to the encoding/decoding list but will always ignore cookies
+				# (which will be encoded, but not cached).
+				def encode headers, cache = true
+				end
+
+				protected
+				def decode_field byte # should be number (byte.ord)
+					# incremental indexing representation starts with the '01' 2-bit pattern.
+					if byte[0] == 0 && byte[1] == 1
+						# A literal header field with incremental indexing representation starts with the '01' 2-bit pattern.
+						# If the header field name matches the header field name of an entry stored in the static table or the dynamic table, the header field name can be represented using the index of that entry. In this case, the index of the entry is represented as an integer with a 6-bit prefix (see Section 5.1). This value is always non-zero.
+						# Otherwise, the header field name is represented as a string literal (see Section 5.2). A value 0 is used in place of the 6-bit index, followed by the header field name.
+
+
+					elsif (byte & 0b11110000) == 0
+						# A literal header field without indexing representation starts with the '0000' 4-bit pattern.
+						# If the header field name matches the header field name of an entry stored in the static table or the dynamic table, the header field name can be represented using the index of that entry.
+						# In this case, the index of the entry is represented as an integer with a 4-bit prefix (see Section 5.1). This value is always non-zero.
+						# Otherwise, the header field name is represented as a string literal (see Section 5.2) and a value 0 is used in place of the 4-bit index, followed by the header field name.
+
+
+					elsif (byte & 0b11110000) == 16
+						# A literal header field never-indexed representation starts with the '0001' 4-bit pattern + 4+ bits for index
+					elsif (byte & 0b11100000) == 32
+						# A dynamic table size update starts with the '001' 3-bit pattern
+						# followed by the new maximum size, represented as an integer with a 5-bit prefix (see Section 5.1).
+					end
+							
+				end
 			end
-			class Encoder
-			end
 
 
-
-			STATIC_LIST = [
+			STATIC_LIST = [ nil,
 				[":authority"],
 				[":method", "GET" ],
 				[":method", "POST" ],
@@ -79,7 +136,6 @@ module GRHttp
 				["www-authenticate"],
 			]
 			STATIC_LENGTH = STATIC_LIST.length
-			MAX_TABLE_SIZE = 4096 - STATIC_LENGTH
 
 			HUFFMAN = [
 				0b11111111_11000,
