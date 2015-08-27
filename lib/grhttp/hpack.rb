@@ -23,7 +23,7 @@ module GRHttp
 				end
 				def insert *field
 					@list.unshift field
-					field.each {|f| @actual_size += f.to_s.bytesize}
+					field.each {|f| @actual_size += f.to_s.bytesize}; @actual_size += 32
 					resize
 					field
 				end
@@ -45,6 +45,7 @@ module GRHttp
 					@size = value if value && value < @max_size
 					while (@actual_size > @size) && @list.any?
 						@list.pop.each {|i| @actual_size -= i.to_s.bytesize}
+						@actual_size -= 32
 					end
 					self
 				end
@@ -194,7 +195,7 @@ module GRHttp
 					data = StringIO.new data
 					results = {}
 					while (field = decode_field(data))
-						results[field[0]] ? (results[field[0]].is_a?(String) ? (results[field[0]] = [results[field[0]], field[1]]) : (results[field[0]] << field[1]) ) : (results[field[0]] = field[1])
+						results[field[0]] ? (results[field[0]].is_a?(String) ? (results[field[0]] = [results[field[0]], field[1]]) : (results[field[0]] << field[1]) ) : (results[field[0]] = field[1]) if field[1]
 					end
 					results
 				end
