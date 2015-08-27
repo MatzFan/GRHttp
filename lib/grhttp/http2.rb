@@ -17,9 +17,9 @@ module GRHttp
 		end
 		def on_open
 
-			# Compression is stateful
-			# @decoder = HPACK decoder
-			# @encoder = HPACK encoder
+			# Header compression is stateful
+			@decoder = HPACK::Decoder.new
+			@encoder = HPACK::Encoder.new
 
 			# the header-stream cache
 			@header_buffer = ''
@@ -244,7 +244,9 @@ module GRHttp
 
 			return unless frame[:flag][2] == 1 # fin
 
-			headers = @header_buffer.dup # this is where HPACK comes in
+			headers = @decoder.decode @header_buffer # this is where HPACK comes in
+
+			# TODO: manage headers and streams
 
 			@header_buffer.clear
 			@header_end_stream = false

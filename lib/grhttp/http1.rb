@@ -66,6 +66,7 @@ module GRHttp
 							request[:body_complete] = true if line =~ EOHEADERS
 						else
 							request[:body_complete] = true
+							Base.parse_request request
 						end
 					end
 					(@request = ::GRHttp::Request.new(@io)) && ( ::GRHttp::HTTP2.handshake(request, @io, data) || dispatch(request, data) ) if request[:body_complete]
@@ -90,7 +91,6 @@ module GRHttp
 					send_response response
 					return false
 				end
-
 				response = ::GRHttp::Response.new request
 				begin
 					if request.websocket?

@@ -25,7 +25,6 @@ module GRHttp
 		# use, at the very least `HTTPResponse.new request`
 		def initialize request, status = 200, headers = {}, content = nil
 			@request = request
-			Base.parse_request request
 			@status = status
 			@headers = headers
 			@body = content || []
