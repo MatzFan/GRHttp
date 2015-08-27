@@ -22,7 +22,7 @@ module GRHttp
 				h = io[:websocket_handler]
 				h.on_close(WSEvent.new(io, nil)) if h.respond_to? :on_close
 				io[:ws_extentions].each { |ex| ex.close }
-				io[:ws_extentions].clear
+				io[:ws_extentions] = nil
 			end
 
 			# Sets the message byte size limit for a Websocket message. Defaults to 0 (no limit)
@@ -238,7 +238,7 @@ module GRHttp
 			# handles the completed frame and sends a message to the handler once all the data has arrived.
 			def self.complete_frame io
 				parser = io[:ws_parser]
-				io[:ws_extentions].each {|ex| ex.parse_frame(parser) }
+				io[:ws_extentions].each {|ex| ex.parse_frame(parser) } if io[:ws_extentions]
 
 				case parser[:op_code]
 				when 9 # ping
@@ -257,7 +257,7 @@ module GRHttp
 					parser[:message] ? ((parser[:message] << parser[:body]) && parser[:body].clear) : ((parser[:message] = parser[:body]) && parser[:body] = '')
 					# handle parser[:op_code] == 0 / fin == false (continue a frame that hasn't ended yet)
 					if parser[:fin]
-						io[:ws_extentions].each {|ex| ex.parse_message(parser) }
+						io[:ws_extentions].each {|ex| ex.parse_message(parser) } if io[:ws_extentions]
 						GRHttp::Base.make_utf8! parser[:message] if parser[:p_op_code] == 1
 						GReactor.queue COMPLETE_FRAME_PROC, [io[:websocket_handler], WSEvent.new(io, parser[:message])]
 						parser[:message] = nil
