@@ -157,9 +157,11 @@ module GRHttp
 			headers[header]
 		end
 
-		# sets a response header. response headers should be a downcase String (not a symbol or any other object).
+		# Sets a response header. response headers should be a **downcase** String (not a symbol or any other object).
 		#
 		# this is the prefered to set a header.
+		#
+		# Be aware that HTTP/2 will treat a header name with an upper-case letter as an Error! (while HTTP/1.1 ignores the letter case)
 		#
 		# returns the value set for the header.
 		#
