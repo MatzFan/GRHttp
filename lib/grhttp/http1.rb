@@ -66,7 +66,6 @@ module GRHttp
 							request[:body_complete] = true if line =~ EOHEADERS
 						else
 							request[:body_complete] = true
-							Base.parse_request request
 						end
 					end
 					(@request = ::GRHttp::Request.new(@io)) && ( ::GRHttp::HTTP2.handshake(request, @io, data) || dispatch(request, data) ) if request[:body_complete]
@@ -76,7 +75,7 @@ module GRHttp
 
 			def dispatch request, data
 				return data.string.clear if @io.io.closed? || @refuse_requests
-
+				Base.parse_request request
 				#check for server-responses
 				case request[:method]
 				when 'TRACE'.freeze
