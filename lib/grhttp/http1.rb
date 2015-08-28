@@ -24,6 +24,9 @@ module GRHttp
 					end
 					until request[:headers_complete] || (l = data.gets).nil?
 						if l.include? ':'
+							# n = l.slice!(0, l.index(':')); l.slice! 0
+							# n.strip! ; n.downcase!; n.freeze
+							# request[n] ? (request[n].is_a?(Array) ? (request[n] << l) : request[n] = [request[n], l ]) : (request[n] = l)
 							l = l.strip.split(/:[\s]?/, 2)
 							l[0].strip! ; l[0].downcase!;
 							request[l[0]] ? (request[l[0]].is_a?(Array) ? (request[l[0]] << l[1]) : request[l[0]] = [request[l[0]], l[1] ]) : (request[l[0]] = l[1])
@@ -136,7 +139,7 @@ module GRHttp
 			end
 			def stream_response response, finish = false
 				unless response.headers.frozen?
-					response['transfer-encoding'] = 'chunked'
+					response['transfer-encoding'.freeze] = 'chunked'
 					response.headers['connection'.freeze] = 'close'.freeze
 					send_headers response
 					@refuse_requests = true

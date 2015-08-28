@@ -33,11 +33,15 @@ module GRHttp
 					index ? (index + STATIC_LENGTH) : nil
 				end
 				def find_name name
-					STATIC_LIST.each_with_index do |f, i|
-						return i if f && f[0] == name
+					index = 1
+					while STATIC_LIST[index]
+						return index if STATIC_LIST[index][0] == name
+						index += 1
 					end
-					@list.each_with_index do |f, i|
-						return i+STATIC_LENGTH if f[0] == name
+					index = 0
+					while @list[index]
+						return index+STATIC_LENGTH if @list[index][0] == name
+						index += 1
 					end
 					nil
 				end
