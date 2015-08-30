@@ -3,9 +3,9 @@ require "bundler/setup"
 require 'grhttp'
 
 
-describe GRHttp::HTTP2::HPACK::Context do
+describe GRHttp::HTTP2::HPACK do
 	before do
-		@context = GRHttp::HTTP2::HPACK::Context.new
+		@context = GRHttp::HTTP2::HPACK.new
 	end
 
 	describe "HPACK - encoding/dencoding a number" do
@@ -37,7 +37,15 @@ describe GRHttp::HTTP2::HPACK::Context do
 			# chack for reader overflow
 			list.read.must_equal 'more_data'
 			# check for dynamic table update
-			(@context.instance_eval { @list[62] }).must_equal [:authority, 'www.example.com']
+			(@context.instance_eval { @decoding_list[62] }).must_equal [:authority, 'www.example.com']
+		end
+
+		it "Will correctly decode a header buffer." do
+			headers = @context.decode "\x82\x82\x86\x84A\x8C\xF1\xE3\xC2\xE5\xF2:k\xA0\xAB\x90\xF4\xFF"
+			headers[:path].must_equal '/'
+			headers[:method].must_equal ['GET', 'GET']
+			headers[:authority].must_equal 'www.example.com'
+			headers[:scheme].must_equal 'http'
 		end
 	end
 	# describe "HPACK - encoding a number" do

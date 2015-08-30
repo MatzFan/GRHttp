@@ -2,7 +2,7 @@
 
 module GRHttp
 	class HTTP2 < GReactor::Protocol
-		module HPACK
+		class HPACK
 			class IndexTable
 				attr_reader :size
 				attr_accessor :max_size
@@ -45,7 +45,7 @@ module GRHttp
 					end
 					nil
 				end
-				def resize value
+				def resize value = nil
 					@size = value if value && value < @max_size
 					while (@actual_size > @size) && @list.any?
 						@list.pop.each {|i| @actual_size -= i.to_s.bytesize}
@@ -55,164 +55,159 @@ module GRHttp
 				end
 			end
 
-			class Context
-				def initialize
-					@list = IndexTable.new
+			def initialize
+				@decoding_list = IndexTable.new
+				@encoding_list = IndexTable.new
+			end
+
+			def decode data
+				data = StringIO.new data
+				results = {}
+				while (field = decode_field(data))
+					results[field[0]] ? (results[field[0]].is_a?(String) ? (results[field[0]] = [results[field[0]], field[1]]) : (results[field[0]] << field[1]) ) : (results[field[0]] = field[1]) if field[1]
 				end
-				protected
-				def decode_field data # expects a StringIO or other IO object
-					byte = data.getbyte
-					if byte[7] == 1 # 0b1000_0000 == 0b1000_0000
-						# An indexed header field starts with the '1' 1-bit pattern, followed by the index of the matching header field, represented as an integer with a 7-bit prefix (see Section 5.1).
-						num = extract_number data, byte, 1
-						@list[num]
-					elsif byte & 192 == 64 # 0b1100_0000 == 0b0100_0000
-						# A literal header field with incremental indexing representation starts with the '01' 2-bit pattern.
-						# If the header field name matches the header field name of an entry stored in the static table or the dynamic table, the header field name can be represented using the index of that entry. In this case, the index of the entry is represented as an integer with a 6-bit prefix (see Section 5.1). This value is always non-zero.
-						# Otherwise, the header field name is represented as a string literal (see Section 5.2). A value 0 is used in place of the 6-bit index, followed by the header field name.
-						num = extract_number data, byte, 2
-						field_name = (num == 0) ? extract_string(data) : @list.get_name(num)
-						field_value = extract_string(data)
-						@list.insert field_name, field_value
-					elsif byte & 224 # 0b1110_0000 == 0
-						# A literal header field without indexing representation starts with the '0000' 4-bit pattern.
-						# If the header field name matches the header field name of an entry stored in the static table or the dynamic table, the header field name can be represented using the index of that entry.
-						# In this case, the index of the entry is represented as an integer with a 4-bit prefix (see Section 5.1). This value is always non-zero.
-						# Otherwise, the header field name is represented as a string literal (see Section 5.2) and a value 0 is used in place of the 4-bit index, followed by the header field name.
-						# OR
-						# A literal header field never-indexed representation starts with the '0001' 4-bit pattern + 4+ bits for index
-						num = extract_number data, byte, 4
-						field_name = (num == 0) ? extract_string(data) : @list.get_name(num)
-						field_value = extract_string(data)
-						[field_name, field_value]
-					elsif byte & 224 == 32 # 0b1110_0000 == 0b0010_0000
-						# A dynamic table size update starts with the '001' 3-bit pattern
-						# followed by the new maximum size, represented as an integer with a 5-bit prefix (see Section 5.1).
-						@list.resize extract_number(data, byte, 5)
-						[].freeze
-					else
-						raise "HPACK Error - invalid field indicator."
-					end
+				results
+			end
+			def encode headers = {}
+				buffer = ''
+				headers.each {|k, v| buffer << encode_field(b,v) if v}
+				buffer
+			end
+
+			protected
+			def decode_field data # expects a StringIO or other IO object
+				byte = data.getbyte
+				return nil unless byte
+				if byte[7] == 1 # 0b1000_0000 == 0b1000_0000
+					# An indexed header field starts with the '1' 1-bit pattern, followed by the index of the matching header field, represented as an integer with a 7-bit prefix (see Section 5.1).
+					num = extract_number data, byte, 1
+					@decoding_list[num]
+				elsif byte & 192 == 64 # 0b1100_0000 == 0b0100_0000
+					# A literal header field with incremental indexing representation starts with the '01' 2-bit pattern.
+					# If the header field name matches the header field name of an entry stored in the static table or the dynamic table, the header field name can be represented using the index of that entry. In this case, the index of the entry is represented as an integer with a 6-bit prefix (see Section 5.1). This value is always non-zero.
+					# Otherwise, the header field name is represented as a string literal (see Section 5.2). A value 0 is used in place of the 6-bit index, followed by the header field name.
+					num = extract_number data, byte, 2
+					field_name = (num == 0) ? extract_string(data) : @decoding_list.get_name(num)
+					field_value = extract_string(data)
+					@decoding_list.insert field_name, field_value
+				elsif byte & 224 # 0b1110_0000 == 0
+					# A literal header field without indexing representation starts with the '0000' 4-bit pattern.
+					# If the header field name matches the header field name of an entry stored in the static table or the dynamic table, the header field name can be represented using the index of that entry.
+					# In this case, the index of the entry is represented as an integer with a 4-bit prefix (see Section 5.1). This value is always non-zero.
+					# Otherwise, the header field name is represented as a string literal (see Section 5.2) and a value 0 is used in place of the 4-bit index, followed by the header field name.
+					# OR
+					# A literal header field never-indexed representation starts with the '0001' 4-bit pattern + 4+ bits for index
+					num = extract_number data, byte, 4
+					field_name = (num == 0) ? extract_string(data) : @decoding_list.get_name(num)
+					field_value = extract_string(data)
+					[field_name, field_value]
+				elsif byte & 224 == 32 # 0b1110_0000 == 0b0010_0000
+					# A dynamic table size update starts with the '001' 3-bit pattern
+					# followed by the new maximum size, represented as an integer with a 5-bit prefix (see Section 5.1).
+					@decoding_list.resize extract_number(data, byte, 5)
+					[].freeze
+				else
+					raise "HPACK Error - invalid field indicator."
 				end
-				def encode_field name, value
-					if value.is_a?(Array)
-						return (value.map {|v| encode_field name, v} .join)
-					end
-					if name == 'set-cookie'
-						buffer = ''
-						buffer << pack_number( 55, 16, 4)
-						buffer << pack_string(value)
-						return buffer
-					end
-					index = @list.find(name, value)
-					return pack_number( index, 1, 1) if index
-					index = @list.find_name name
-					@list.insert name, value
+			end
+			def encode_field name, value
+				if value.is_a?(Array)
+					return (value.map {|v| encode_field name, v} .join)
+				end
+				if name == 'set-cookie'
 					buffer = ''
-					if index
-						buffer << pack_number( index, 64, 2)
-					else
-						buffer << pack_number( 0, 64, 2)
-						buffer << pack_string(name)
-					end
+					buffer << pack_number( 55, 16, 4)
 					buffer << pack_string(value)
-					buffer
+					return buffer
 				end
-				def extract_number data, prefix, prefix_length
-					mask = 255 >> prefix_length
-					return prefix & mask unless (prefix & mask) == mask
-					count = prefix = 0
-					loop do
-						c = data.getbyte
-						prefix = prefix | ((c & 127) << (7*count))
-						break if c[7] == 0
-						count += 1
-					end
-					prefix + mask
-				# rescue e =>
-				# 	raise "HPACK Error - number input invalid"
+				index = @encoding_list.find(name, value)
+				return pack_number( index, 1, 1) if index
+				index = @encoding_list.find_name name
+				@encoding_list.insert name, value
+				buffer = ''
+				if index
+					buffer << pack_number( index, 64, 2)
+				else
+					buffer << pack_number( 0, 64, 2)
+					buffer << pack_string(name)
 				end
-				def pack_number number, prefix, prefix_length
-					n_length = 8-prefix_length
-					if (number + 1 ).bit_length <= n_length
-						return ((prefix << n_length) | number).chr
-					end
-					prefix = [(prefix << n_length) | (2**n_length - 1)]
-					number -= 2**n_length - 1
-					loop do
-						prefix << ((number & 127) | 128)
-						number = number >> 7
-						break if number == 0
-					end
-					(prefix << (prefix.pop & 127)).pack('C*'.freeze)
+				buffer << pack_string(value)
+				buffer
+			end
+			def extract_number data, prefix, prefix_length
+				mask = 255 >> prefix_length
+				return prefix & mask unless (prefix & mask) == mask
+				count = prefix = 0
+				loop do
+					c = data.getbyte
+					prefix = prefix | ((c & 127) << (7*count))
+					break if c[7] == 0
+					count += 1
 				end
-				def pack_string string, deflate = true
-					string = deflate(string) if deflate
-					(pack_number(string.bytesize, (deflate ? 1 : 0), 1) + string).force_encoding ::Encoding::ASCII_8BIT
+				prefix + mask
+			# rescue e =>
+			# 	raise "HPACK Error - number input invalid"
+			end
+			def pack_number number, prefix, prefix_length
+				n_length = 8-prefix_length
+				if (number + 1 ).bit_length <= n_length
+					return ((prefix << n_length) | number).chr
 				end
-				def extract_string data
+				prefix = [(prefix << n_length) | (2**n_length - 1)]
+				number -= 2**n_length - 1
+				loop do
+					prefix << ((number & 127) | 128)
+					number = number >> 7
+					break if number == 0
+				end
+				(prefix << (prefix.pop & 127)).pack('C*'.freeze)
+			end
+			def pack_string string, deflate = true
+				string = deflate(string) if deflate
+				(pack_number(string.bytesize, (deflate ? 1 : 0), 1) + string).force_encoding ::Encoding::ASCII_8BIT
+			end
+			def extract_string data
+				byte = data.getbyte
+				hoffman = byte[7] == 1
+				length = extract_number data, byte, 1
+				if hoffman
+					inflate data.read(length)
+				else
+					data.read length
+				end
+			end
+			def inflate data
+				data = StringIO.new data
+				str = ''
+				buffer = ''
+				until data.eof?
 					byte = data.getbyte
-					hoffman = byte[7] == 1
-					length = extract_number data, byte, 1
-					if hoffman
-						inflate data.read(length)
-					else
-						data.read length
-					end
-				end
-				def inflate data
-					data = StringIO.new data
-					str = ''
-					buffer = ''
-					until data.eof?
-						byte = data.getbyte
-						8.times do |i|
-							buffer << byte[7-i].to_s
-							if HUFFMAN[buffer]
-								str << HUFFMAN[buffer].chr rescue raise("HPACK Error - Huffman EOS found")
-								buffer.clear
-							end
-						end
-					end
-					raise "HPACK Error - Huffman padding too long (#{buffer.length}): #{buffer}" if buffer.length > 29
-					str
-				end
-				def deflate data
-					str = ''
-					buffer = ''
-					data.bytes.each do |i|
-						buffer << HUFFMAN.key(i)
-						if (buffer % 8) == 0
-							str << [buffer].pack('b*')
+					8.times do |i|
+						buffer << byte[7-i].to_s
+						if HUFFMAN[buffer]
+							str << HUFFMAN[buffer].chr rescue raise("HPACK Error - Huffman EOS found")
 							buffer.clear
 						end
 					end
-					(8-(buffer.bytesize % 8)).times { buffer << '1'}
-					str << [buffer].pack('b*')
-					buffer.clear
-					str
 				end
+				raise "HPACK Error - Huffman padding too long (#{buffer.length}): #{buffer}" if buffer.length > 29
+				str
 			end
-
-			class Decoder < Context
-				def decode data
-					data = StringIO.new data
-					results = {}
-					while (field = decode_field(data))
-						results[field[0]] ? (results[field[0]].is_a?(String) ? (results[field[0]] = [results[field[0]], field[1]]) : (results[field[0]] << field[1]) ) : (results[field[0]] = field[1]) if field[1]
+			def deflate data
+				str = ''
+				buffer = ''
+				data.bytes.each do |i|
+					buffer << HUFFMAN.key(i)
+					if (buffer % 8) == 0
+						str << [buffer].pack('b*')
+						buffer.clear
 					end
-					results
 				end
+				(8-(buffer.bytesize % 8)).times { buffer << '1'}
+				str << [buffer].pack('b*')
+				buffer.clear
+				str
 			end
-			class Encoder < Context
-				def encode headers = {}
-					buffer = ''
-					headers.each {|k, v| buffer << encode_field(b,v) if v}
-					buffer
-				end
-			end
-
-
 			STATIC_LIST = [ nil,
 				[:authority],
 				[:method, "GET" ],

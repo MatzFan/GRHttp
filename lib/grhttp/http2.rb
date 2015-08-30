@@ -61,31 +61,6 @@ module GRHttp
 			data.string.clear
 		end
 
-		# Process a connection error and act accordingly.
-		#
-		# @return [true, false, nil] returns true if connection handling can continue of false (or nil) for a fatal error.
-		def connection_error type
-			case type
-			when NO_ERROR
-			when PROTOCOL_ERROR
-			when INTERNAL_ERROR
-			when FLOW_CONTROL_ERROR
-			when SETTINGS_TIMEOUT
-			when STREAM_CLOSED
-			when FRAME_SIZE_ERROR
-			when REFUSED_STREAM
-			when CANCEL
-			when COMPRESSION_ERROR
-			when CONNECT_ERROR
-			when ENHANCE_YOUR_CALM
-			when INADEQUATE_SECURITY
-			when HTTP_1_1_REQUIRED
-			else
-			end
-					
-			nil
-		end
-
 		# Error codes:
 
 		# The associated condition is not a result of an error. For example, a GOAWAY might include this code to indicate graceful shutdown of a connection.
@@ -117,6 +92,30 @@ module GRHttp
 		# The endpoint requires that HTTP/1.1 be used instead of HTTP/2.
 		HTTP_1_1_REQUIRED = 0xd
 
+		# Process a connection error and act accordingly.
+		#
+		# @return [true, false, nil] returns true if connection handling can continue of false (or nil) for a fatal error.
+		def connection_error type
+			case type
+			when NO_ERROR
+			when PROTOCOL_ERROR
+			when INTERNAL_ERROR
+			when FLOW_CONTROL_ERROR
+			when SETTINGS_TIMEOUT
+			when STREAM_CLOSED
+			when FRAME_SIZE_ERROR
+			when REFUSED_STREAM
+			when CANCEL
+			when COMPRESSION_ERROR
+			when CONNECT_ERROR
+			when ENHANCE_YOUR_CALM
+			when INADEQUATE_SECURITY
+			when HTTP_1_1_REQUIRED
+			else
+			end
+			nil
+		end
+
 
 		protected
 
@@ -136,7 +135,6 @@ module GRHttp
 		end
 
 		def parse_preface data
-			return true if @connected
 			unless data.read(24) == "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 				data.string.clear
 				data.rewind
@@ -175,16 +173,13 @@ module GRHttp
 				frame[:sid] = tmp & 2147483647
 				frame[:R] = tmp & 2147483648
 			end
-			unless frame[:complete]
-				tmp = (frame[:body] ||= '')
-				tmp << data.read(frame[:length] - tmp.bytesize).to_s
-				return false if tmp.bytesize < frame[:length]
-				frame[:complete] = true
-			end
+			tmp = (frame[:body] ||= '')
+			tmp << data.read(frame[:length] - tmp.bytesize).to_s
+			return false if tmp.bytesize < frame[:length]
 			#TODO: something - Async?
-			process_frame frame
+			process_frame frame 
 			# reset frame buffer
-			@frame = {}
+			@frame = {} # @frame.clear
 			true
 		end
 
@@ -284,37 +279,6 @@ end
 
 
 
-
-
-# Error Codes:
-# NO_ERROR (0x0):
-# The associated condition is not a result of an error. For example, a GOAWAY might include this code to indicate graceful shutdown of a connection.
-# PROTOCOL_ERROR (0x1):
-# The endpoint detected an unspecific protocol error. This error is for use when a more specific error code is not available.
-# INTERNAL_ERROR (0x2):
-# The endpoint encountered an unexpected internal error.
-# FLOW_CONTROL_ERROR (0x3):
-# The endpoint detected that its peer violated the flow-control protocol.
-# SETTINGS_TIMEOUT (0x4):
-# The endpoint sent a SETTINGS frame but did not receive a response in a timely manner. See Section 6.5.3 ("Settings Synchronization").
-# STREAM_CLOSED (0x5):
-# The endpoint received a frame after a stream was half-closed.
-# FRAME_SIZE_ERROR (0x6):
-# The endpoint received a frame with an invalid size.
-# REFUSED_STREAM (0x7):
-# The endpoint refused the stream prior to performing any application processing (see Section 8.1.4 for details).
-# CANCEL (0x8):
-# Used by the endpoint to indicate that the stream is no longer needed.
-# COMPRESSION_ERROR (0x9):
-# The endpoint is unable to maintain the header compression context for the connection.
-# CONNECT_ERROR (0xa):
-# The connection established in response to a CONNECT request (Section 8.3) was reset or abnormally closed.
-# ENHANCE_YOUR_CALM (0xb):
-# The endpoint detected that its peer is exhibiting a behavior that might be generating excessive load.
-# INADEQUATE_SECURITY (0xc):
-# The underlying transport has properties that do not meet minimum security requirements (see Section 9.2).
-# HTTP_1_1_REQUIRED (0xd):
-# The endpoint requires that HTTP/1.1 be used instead of HTTP/2.
 
 
 

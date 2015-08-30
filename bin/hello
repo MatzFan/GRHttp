@@ -8,4 +8,4 @@ require "grhttp"
 puts "Using GRHttp #{GRHttp::VERSION} with GReactor #{GReactor::VERSION}"
 
 GR.create_logger nil
-GRHttp.start(1) {   GRHttp.listen {|request, response| 'Hello World!' }      }
+GRHttp.start(1) {   GRHttp.listen {|request, response| 'Hello World!' } ; GRHttp.listen(port: 3030, ssl: true) {|request, response| 'Hello World!' }      }
