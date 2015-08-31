@@ -21,8 +21,10 @@ module GRHttp
 			def on_close io
 				h = io[:websocket_handler]
 				h.on_close(WSEvent.new(io, nil)) if h.respond_to? :on_close
-				io[:ws_extentions].each { |ex| ex.close }
-				io[:ws_extentions] = nil
+				if io[:ws_extentions]
+					io[:ws_extentions].each { |ex| ex.close }
+					io[:ws_extentions] = nil
+				end
 			end
 
 			# Sets the message byte size limit for a Websocket message. Defaults to 0 (no limit)

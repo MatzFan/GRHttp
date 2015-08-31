@@ -9,6 +9,7 @@ puts "Using GRHttp #{GRHttp::VERSION} with GReactor #{GReactor::VERSION}"
 
 # ~/ruby/wrk/wrk -c400 -d5 -t12 http://localhost:3000/ctrl
 # ab -n 10000 -c 200 -k http://127.0.0.1:3000/
+# ab -n 10000 -c 200 -k https://127.0.0.1:3030/
 
 # GR.start; 10_000.times {|i| GR.run_async {GR.run_after(5, GRHttp.ws_connect('ws://localhost:3000') {|ws| } ) {|ws| ws.close; puts "#{i} closed" } ; puts "opening #{i}"} }
 

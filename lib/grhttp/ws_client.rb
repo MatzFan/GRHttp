@@ -185,7 +185,7 @@ module GRHttp
 				until reply[-4..-1] == stop_reply
 					add = io.read(1)
 					add ? (reply << add) : (sleep 0.2)
-					raise "connections was closed" if io.io.closed?
+					raise "connection failed" if io.io.closed?
 					raise "Websocket client handshake timed out (HTTP reply not recieved)\n\n Got Only: #{reply}" if Time.now >= stop_time
 				end
 				# review reply
